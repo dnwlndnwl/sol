@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="ko">
+    <head>
+        <meta charset="UTF-8" />
+        <title>타이틀</title>
+        <style>
+            body {
+                margin: 0;
+                background: black;
+                color: white;
+                font-family: sans-serif;
+            }
+
+            /* 전체 화면 */
+            #game {
+                position: relative;
+                width: 100vw;
+                height: 100vh;
+            }
+
+            /* 배경 */
+            /* #background {
+                position: absolute;
+                width: 100%;
+                height: 100%;
+                background: url("배경이미지") center/cover
+                    no-repeat;
+                background-attachment: fixed;
+            }*/
+
+            /* 대사 */
+            #dialogue {
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                width: 100%;
+
+                background: rgba(0, 0, 0, 0.7);
+                padding: 20px;
+
+                box-sizing: border-box;
+            }
+
+            /* 텍스트 */
+            #text {
+                font-size: 20px;
+                margin-bottom: 10px;
+            }
+
+            /* 선택지 */
+            .choice {
+                display: block;
+                margin: 5px 0;
+                padding: 10px;
+                background: #222;
+                border: none;
+                color: white;
+                cursor: pointer;
+            }
+            .choice:hover {
+                background: #444;
+            }
+
+            /* 캐릭터 */
+            #character {
+                position: absolute;
+                bottom: 100px;
+                left: 50%;
+                transform: translateX(-50%);
+                height: 60%;
+                pointer-events: none;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="game">
+            <div id="background"></div>
+            <img id="character" src="" />
+            <div id="dialogue">
+                <div id="text"></div>
+                <div id="choices"></div>
+            </div>
+        </div>
+
+        <script>
+            const text = document.getElementById("text");
+            const choices = document.getElementById("choices");
+
+            let current = "start";
+
+            function showScene(name) {
+                const scene = story[name];
+
+                text.innerText = scene.text;
+                choices.innerHTML = "";
+
+                scene.choices.forEach((choice) => {
+                    const btn = document.createElement("button");
+                    btn.innerText = choice.text;
+                    btn.onclick = () => showScene(choice.next);
+                    choices.appendChild(btn);
+                });
+            }
+
+            /* 장면 시작 */
+            const story = {
+                start: {
+                    text: "배경대사.",
+                    choices: [
+                        { text: "선택지 1", next: "scene1" },
+                        { text: "선택지 2", next: "scene2" },
+                    ],
+                },
+
+                scene1: {
+                    text: "1 결과",
+                    choices: [{ text: "1-1선택지", next: "scene1_1" }],
+                },
+
+                scene1_1: {
+                    text: "1-1 결과",
+                    choices: [],
+                },
+
+                scene2: {
+                    text: "2 결과",
+                    choices: [],
+                },
+            };
+            showScene("start");
+        </script>
+    </body>
+</html>

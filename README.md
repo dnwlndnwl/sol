@@ -1,4 +1,4 @@
 eye
-#e88f76
+#4eedc3
 hair
 #d17638

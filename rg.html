@@ -66,9 +66,9 @@
     <body>
         <div id="wrapper">
             <div id="ui">
-            <div id="score">Score: 0</div>
-            <div id="combo">Combo: 0</div>
-        </div>
+                <div id="score">Score: 0</div>
+                <div id="combo">Combo: 0</div>
+            </div>
             <div id="game">
                 <div class="lane"></div>
                 <div class="lane"></div>
@@ -79,6 +79,8 @@
 
         <script>
             const lanes = document.querySelectorAll(".lane");
+            let score = 0;
+            let combo = 0;
 
             //판정선
             lanes.forEach((lane) => {
@@ -101,6 +103,7 @@
 
                 const note = document.createElement("div");
                 note.className = "note";
+                note.hit = false;
                 lane.appendChild(note);
 
                 let y = 0;
@@ -111,6 +114,15 @@
 
                     if (y > window.innerHeight) {
                         clearInterval(fall);
+                        if (!note.hit) {
+                            note.hit = true;
+                            combo = 0;
+                            console.log("MISS");
+
+                            document.getElementById("combo").innerText =
+                                "Combo: " + combo;
+                        }
+
                         note.remove();
                     }
                 }, 16);
@@ -129,26 +141,51 @@
 
                 const lane = lanes[laneIndex];
                 const notes = lane.querySelectorAll(".note");
-
-                if (notes.length === 0) {
-                    console.log("MISS");
-                    return;
-                }
-
-                const note = notes[0]; // 제일 아래 노트
-                const noteTop = note.offsetTop;
-
                 const line = lane.querySelector(".hitline");
                 const lineTop = line.offsetTop;
 
+                /*판정 되는 노트 */
+                const note = Array.from(notes)
+                    .filter((n) => !n.hit)
+                    .find((n) => {
+                        const noteTop = n.offsetTop;
+                        return Math.abs(noteTop - lineTop) < 80; // 판정 범위
+                    });
+
+                if (!note) return;
+
+                const noteTop = note.offsetTop;
                 const diff = Math.abs(noteTop - lineTop);
 
-                if (diff < 50) {
-                    console.log("HIT!");
+                //판정 결과
+                let result = "";
+
+                if (diff < 20) {
+                    result = "Perfect";
+                    score += 300;
+                    combo++;
+                } else if (diff < 50) {
+                    result = "Good";
+                    score += 100;
+                    combo++;
+                } else {
+                    result = "Miss";
+                    combo = 0;
+                }
+
+                console.log(result);
+
+                // 노트 제거
+                if (result !== "Miss") {
+                    note.hit = true;
                     note.remove();
                 } else {
-                    console.log("MISS");
+                    combo = 0;
                 }
+
+                // UI 업데이트
+                document.getElementById("score").innerText = "Score: " + score;
+                document.getElementById("combo").innerText = "Combo: " + combo;
             });
         </script>
     </body>

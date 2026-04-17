@@ -60,6 +60,18 @@
                 color: white;
                 font-size: 20px;
             }
+
+            /* 판정 텍스트 */
+            #judge {
+                position: fixed;
+                top: 40%;
+                left: 50%;
+                transform: translateX(-50%);
+                color: white;
+                font-size: 32px;
+                pointer-events: none;
+                font-weight: bold;
+            }
         </style>
     </head>
 
@@ -69,6 +81,7 @@
                 <div id="score">Score: 0</div>
                 <div id="combo">Combo: 0</div>
             </div>
+            <div id="judge"></div>
             <div id="game">
                 <div class="lane"></div>
                 <div class="lane"></div>
@@ -81,6 +94,8 @@
             const lanes = document.querySelectorAll(".lane");
             let score = 0;
             let combo = 0;
+            const judgeEl = document.getElementById("judge");
+            let judgeTimer = null;
 
             //판정선
             lanes.forEach((lane) => {
@@ -98,26 +113,34 @@
             };
 
             // 노트 생성
+            function showJudge(text, color) {
+                judgeEl.innerText = text;
+                judgeEl.style.color = color;
+                clearTimeout(judgeTimer);
+                judgeTimer = setTimeout(() => (judgeEl.innerText = ""), 500);
+            }
+
             function spawnNote(laneIndex) {
                 const lane = lanes[laneIndex];
 
                 const note = document.createElement("div");
                 note.className = "note";
-                note.hit = false;
+                note.dataset.hit = "false";
                 lane.appendChild(note);
 
                 let y = 0;
+                const gameHeight = document.getElementById("game").offsetHeight;
 
                 const fall = setInterval(() => {
                     y += 5;
                     note.style.top = y + "px";
 
-                    if (y > window.innerHeight) {
+                    if (y > gameHeight) {
                         clearInterval(fall);
-                        if (!note.hit) {
-                            note.hit = true;
+                        if (note.dataset.hit === "false") {
+                            note.dataset.hit = "true";
                             combo = 0;
-                            console.log("MISS");
+                            showJudge("Miss", "gray");
 
                             document.getElementById("combo").innerText =
                                 "Combo: " + combo;
@@ -136,6 +159,7 @@
 
             //키 입력
             document.addEventListener("keydown", (e) => {
+                if (e.repeat) return;
                 const laneIndex = keyMap[e.key];
                 if (laneIndex === undefined) return;
 
@@ -144,46 +168,43 @@
                 const line = lane.querySelector(".hitline");
                 const lineTop = line.offsetTop;
 
-                /*판정 되는 노트 */
                 const note = Array.from(notes)
-                    .filter((n) => !n.hit)
+                    .filter((n) => n.dataset.hit === "false")
                     .find((n) => {
-                        const noteTop = n.offsetTop;
-                        return Math.abs(noteTop - lineTop) < 80; // 판정 범위
+                        const nTop = n.offsetTop;
+                        return Math.abs(nTop - lineTop) < 80;
                     });
 
                 if (!note) return;
 
-                const noteTop = note.offsetTop;
-                const diff = Math.abs(noteTop - lineTop);
+                const nTop = note.offsetTop;
+                const diff = Math.abs(nTop - lineTop);
 
-                //판정 결과
                 let result = "";
+                let color = "white";
 
                 if (diff < 20) {
                     result = "Perfect";
+                    color = "cyan";
                     score += 300;
                     combo++;
                 } else if (diff < 50) {
                     result = "Good";
+                    color = "lime";
                     score += 100;
                     combo++;
                 } else {
-                    result = "Miss";
-                    combo = 0;
+                    result = "Good";
+                    color = "lime";
+                    score += 100;
+                    combo++;
                 }
 
-                console.log(result);
+                showJudge(result, color);
 
-                // 노트 제거
-                if (result !== "Miss") {
-                    note.hit = true;
-                    note.remove();
-                } else {
-                    combo = 0;
-                }
+                note.dataset.hit = "true";
+                note.remove();
 
-                // UI 업데이트
                 document.getElementById("score").innerText = "Score: " + score;
                 document.getElementById("combo").innerText = "Combo: " + combo;
             });

@@ -1,0 +1,730 @@
+<!doctype html>
+<html lang="ko">
+    <head>
+        <meta charset="UTF-8" />
+        <title>채보 에디터</title>
+        <style>
+            * {
+                box-sizing: border-box;
+                margin: 0;
+                padding: 0;
+            }
+
+            body {
+                background: #0a0a0f;
+                color: white;
+                font-family: "Courier New", monospace;
+                display: flex;
+                height: 100vh;
+                overflow: hidden;
+            }
+
+            /* ── 왼쪽: 컨트롤 ── */
+            #controls {
+                width: 260px;
+                min-width: 260px;
+                background: #0d0d14;
+                border-right: 1px solid #1e1e2e;
+                padding: 24px 20px;
+                display: flex;
+                flex-direction: column;
+                gap: 20px;
+                overflow-y: auto;
+            }
+
+            #controls h2 {
+                font-size: 16px;
+                letter-spacing: 4px;
+                opacity: 0.5;
+                border-bottom: 1px solid #1e1e2e;
+                padding-bottom: 12px;
+            }
+
+            .section {
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+            }
+            .section label {
+                font-size: 11px;
+                opacity: 0.4;
+                letter-spacing: 2px;
+            }
+
+            input[type="number"],
+            input[type="text"] {
+                background: #111120;
+                border: 1px solid #2a2a3a;
+                color: white;
+                padding: 8px 10px;
+                font-family: inherit;
+                font-size: 14px;
+                width: 100%;
+            }
+            input[type="file"] {
+                display: none;
+            }
+
+            .btn {
+                padding: 10px;
+                background: transparent;
+                border: 1px solid #4f46e5;
+                color: #9b8fff;
+                font-size: 12px;
+                letter-spacing: 2px;
+                cursor: pointer;
+                font-family: inherit;
+                transition: background 0.15s;
+                text-align: center;
+            }
+            .btn:hover {
+                background: rgba(79, 70, 229, 0.2);
+            }
+            .btn.danger {
+                border-color: #e53e3e;
+                color: #fc8181;
+            }
+            .btn.danger:hover {
+                background: rgba(229, 62, 62, 0.15);
+            }
+            .btn.success {
+                border-color: #38a169;
+                color: #68d391;
+            }
+            .btn.success:hover {
+                background: rgba(56, 161, 105, 0.15);
+            }
+
+            #status {
+                font-size: 12px;
+                opacity: 0.4;
+                line-height: 1.8;
+            }
+
+            #noteCount {
+                font-size: 28px;
+                letter-spacing: 2px;
+            }
+
+            /* ── 오른쪽: 에디터 ── */
+            #editor {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                gap: 16px;
+                position: relative;
+            }
+
+            /* 파형 */
+            #waveform {
+                width: 90%;
+                height: 60px;
+                background: #0d0d14;
+                border: 1px solid #1e1e2e;
+                position: relative;
+                overflow: hidden;
+            }
+            #waveCanvas {
+                width: 100%;
+                height: 100%;
+            }
+
+            /* 재생 바 */
+            #playhead {
+                position: absolute;
+                top: 0;
+                bottom: 0;
+                width: 2px;
+                background: #7b6ff0;
+                pointer-events: none;
+            }
+
+            /* 채보 입력 영역 */
+            #inputArea {
+                display: flex;
+                gap: 8px;
+            }
+
+            .laneBtn {
+                width: 80px;
+                height: 100px;
+                background: #0d0d14;
+                border: 1px solid #2a2a3a;
+                border-radius: 6px;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                gap: 8px;
+                cursor: pointer;
+                transition:
+                    background 0.05s,
+                    border-color 0.05s;
+                user-select: none;
+            }
+            .laneBtn .keyLabel {
+                font-size: 22px;
+                letter-spacing: 1px;
+                color: #9b8fff;
+            }
+            .laneBtn .laneLabel {
+                font-size: 10px;
+                opacity: 0.3;
+                letter-spacing: 1px;
+            }
+            .laneBtn.flash {
+                background: #2a2850;
+                border-color: #7b6ff0;
+            }
+
+            /* BPM 그리드 */
+            #grid {
+                width: 90%;
+                height: 30px;
+                position: relative;
+                overflow: hidden;
+            }
+            #gridCanvas {
+                width: 100%;
+                height: 100%;
+            }
+
+            /* 안내 */
+            #guide {
+                font-size: 12px;
+                opacity: 0.3;
+                letter-spacing: 2px;
+                text-align: center;
+                line-height: 2;
+            }
+
+            /* 노트 목록 미리보기 */
+            #preview {
+                width: 90%;
+                height: 80px;
+                background: #0d0d14;
+                border: 1px solid #1e1e2e;
+                overflow-x: auto;
+                overflow-y: hidden;
+                position: relative;
+            }
+            #previewCanvas {
+                height: 100%;
+            }
+
+            /* 재생 시간 */
+            #timeDisplay {
+                font-size: 13px;
+                opacity: 0.5;
+                letter-spacing: 2px;
+            }
+        </style>
+    </head>
+    <body>
+        <!-- 왼쪽 컨트롤 -->
+        <div id="controls">
+            <h2>CHART EDITOR</h2>
+
+            <div class="section">
+                <label>MUSIC FILE</label>
+                <label class="btn" for="audioFile">파일 선택</label>
+                <input type="file" id="audioFile" accept="audio/*" />
+                <div id="fileName" style="font-size: 11px; opacity: 0.3">
+                    선택된 파일 없음
+                </div>
+            </div>
+
+            <div class="section">
+                <label>BPM</label>
+                <input
+                    type="number"
+                    id="bpmInput"
+                    value="120"
+                    min="1"
+                    max="400"
+                />
+                <label style="margin-top: 4px">OFFSET (ms)</label>
+                <input type="number" id="offsetInput" value="0" />
+            </div>
+
+            <div class="section">
+                <label>SNAP</label>
+                <select
+                    id="snapSelect"
+                    style="
+                        background: #111120;
+                        border: 1px solid #2a2a3a;
+                        color: white;
+                        padding: 8px;
+                        font-family: inherit;
+                        font-size: 13px;
+                    "
+                >
+                    <option value="1">1/1 (온음표)</option>
+                    <option value="2">1/2 (2분음표)</option>
+                    <option value="4" selected>1/4 (4분음표)</option>
+                    <option value="8">1/8 (8분음표)</option>
+                    <option value="16">1/16 (16분음표)</option>
+                    <option value="0">스냅 없음</option>
+                </select>
+            </div>
+
+            <div class="section">
+                <label>NOTES</label>
+                <div id="noteCount">0</div>
+                <div id="status">
+                    Perfect: 0<br />
+                    레인 1: 0 &nbsp; 레인 2: 0<br />
+                    레인 3: 0 &nbsp; 레인 4: 0
+                </div>
+            </div>
+
+            <div class="section">
+                <button class="btn success" onclick="exportChart()">
+                    JSON 내보내기
+                </button>
+                <label class="btn" for="importFile">JSON 불러오기</label>
+                <input type="file" id="importFile" accept=".json" />
+                <button class="btn danger" onclick="clearAll()">
+                    전체 삭제
+                </button>
+            </div>
+
+            <div class="section">
+                <label>단축키</label>
+                <div style="font-size: 11px; opacity: 0.3; line-height: 2">
+                    SPACE: 재생/일시정지<br />
+                    D/F/J/K: 노트 입력<br />
+                    Z: 마지막 노트 취소<br />
+                    ←→: 5초 이동<br />
+                    BPM 스냅은 자동 적용
+                </div>
+            </div>
+        </div>
+
+        <!-- 오른쪽 에디터 -->
+        <div id="editor">
+            <div id="timeDisplay">00:00.000</div>
+
+            <canvas
+                id="waveCanvas"
+                style="
+                    width: 90%;
+                    height: 60px;
+                    background: #0d0d14;
+                    border: 1px solid #1e1e2e;
+                "
+            ></canvas>
+
+            <canvas
+                id="gridCanvas"
+                style="
+                    width: 90%;
+                    height: 20px;
+                    background: #0d0d14;
+                    border: 1px solid #1e1e2e;
+                "
+            ></canvas>
+
+            <div id="inputArea">
+                <div class="laneBtn" id="laneBtn0">
+                    <span class="keyLabel">D</span
+                    ><span class="laneLabel">LANE 1</span>
+                </div>
+                <div class="laneBtn" id="laneBtn1">
+                    <span class="keyLabel">F</span
+                    ><span class="laneLabel">LANE 2</span>
+                </div>
+                <div class="laneBtn" id="laneBtn2">
+                    <span class="keyLabel">J</span
+                    ><span class="laneLabel">LANE 3</span>
+                </div>
+                <div class="laneBtn" id="laneBtn3">
+                    <span class="keyLabel">K</span
+                    ><span class="laneLabel">LANE 4</span>
+                </div>
+            </div>
+
+            <canvas
+                id="previewCanvas"
+                style="
+                    width: 90%;
+                    height: 80px;
+                    background: #0d0d14;
+                    border: 1px solid #1e1e2e;
+                "
+            ></canvas>
+
+            <div id="guide">
+                음악을 재생하면서 D / F / J / K 로 노트를 입력하세요<br />
+                BPM 스냅이 자동으로 가장 가까운 박자로 보정됩니다
+            </div>
+        </div>
+
+        <audio id="audio"></audio>
+
+        <script>
+            // ════════════════════════════════════════════
+            //  상태
+            // ════════════════════════════════════════════
+            const audio = document.getElementById("audio");
+            const keyMap = { d: 0, f: 1, j: 2, k: 3 };
+            let chart = []; // [{time: ms, lane: 0~3}]
+            let isPlaying = false;
+            let rafId = null;
+
+            // ════════════════════════════════════════════
+            //  음악 로드
+            // ════════════════════════════════════════════
+            document
+                .getElementById("audioFile")
+                .addEventListener("change", (e) => {
+                    const file = e.target.files[0];
+                    if (!file) return;
+                    audio.src = URL.createObjectURL(file);
+                    audio.load();
+                    document.getElementById("fileName").textContent = file.name;
+
+                    audio.oncanplaythrough = () => {
+                        drawWaveform();
+                    };
+                });
+
+            document
+                .getElementById("importFile")
+                .addEventListener("change", (e) => {
+                    const file = e.target.files[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = (ev) => {
+                        try {
+                            chart = JSON.parse(ev.target.result);
+                            updateStatus();
+                            drawPreview();
+                            alert(`채보 불러오기 완료: ${chart.length}개 노트`);
+                        } catch {
+                            alert("올바른 JSON 파일이 아닙니다.");
+                        }
+                    };
+                    reader.readAsText(file);
+                });
+
+            // ════════════════════════════════════════════
+            //  재생 / 일시정지
+            // ════════════════════════════════════════════
+            function togglePlay() {
+                if (!audio.src) return;
+                if (isPlaying) {
+                    audio.pause();
+                    isPlaying = false;
+                    cancelAnimationFrame(rafId);
+                } else {
+                    audio.play();
+                    isPlaying = true;
+                    rafId = requestAnimationFrame(editorLoop);
+                }
+            }
+
+            function editorLoop() {
+                updateTimeDisplay();
+                drawGrid();
+                drawPreview();
+                rafId = requestAnimationFrame(editorLoop);
+            }
+
+            function updateTimeDisplay() {
+                const t = audio.currentTime;
+                const min = Math.floor(t / 60)
+                    .toString()
+                    .padStart(2, "0");
+                const sec = Math.floor(t % 60)
+                    .toString()
+                    .padStart(2, "0");
+                const ms = Math.floor((t % 1) * 1000)
+                    .toString()
+                    .padStart(3, "0");
+                document.getElementById("timeDisplay").textContent =
+                    `${min}:${sec}.${ms}`;
+            }
+
+            // ════════════════════════════════════════════
+            //  BPM 스냅
+            // ════════════════════════════════════════════
+            function snapTime(rawMs) {
+                const bpm =
+                    parseFloat(document.getElementById("bpmInput").value) ||
+                    120;
+                const offset =
+                    parseFloat(document.getElementById("offsetInput").value) ||
+                    0;
+                const snap = parseInt(
+                    document.getElementById("snapSelect").value,
+                );
+
+                if (snap === 0) return Math.round(rawMs); // 스냅 없음
+
+                const beatMs = 60000 / bpm; // 한 박자 = ms
+                const unitMs = (beatMs / snap) * 4; // 스냅 단위 ms (4분음표 기준)
+                const adjusted = rawMs - offset;
+                const snapped = Math.round(adjusted / unitMs) * unitMs + offset;
+                return Math.round(snapped);
+            }
+
+            // ════════════════════════════════════════════
+            //  키 입력 → 노트 추가
+            // ════════════════════════════════════════════
+            document.addEventListener("keydown", (e) => {
+                if (e.repeat) return;
+
+                if (e.code === "Space") {
+                    e.preventDefault();
+                    togglePlay();
+                    return;
+                }
+
+                if (e.key === "z" || e.key === "Z") {
+                    undoLast();
+                    return;
+                }
+
+                if (e.key === "ArrowRight") {
+                    audio.currentTime = Math.min(
+                        audio.duration || 0,
+                        audio.currentTime + 5,
+                    );
+                    return;
+                }
+                if (e.key === "ArrowLeft") {
+                    audio.currentTime = Math.max(0, audio.currentTime - 5);
+                    return;
+                }
+
+                const laneIndex = keyMap[e.key.toLowerCase()];
+                if (laneIndex === undefined) return;
+                if (!isPlaying) return;
+
+                const rawMs = audio.currentTime * 1000;
+                const snapped = snapTime(rawMs);
+
+                // 중복 제거: 같은 레인, 같은 타이밍에 이미 있으면 추가 안 함
+                const duplicate = chart.find(
+                    (n) =>
+                        n.lane === laneIndex && Math.abs(n.time - snapped) < 30,
+                );
+                if (duplicate) return;
+
+                chart.push({ time: snapped, lane: laneIndex });
+                chart.sort((a, b) => a.time - b.time);
+
+                // 버튼 플래시
+                const btn = document.getElementById("laneBtn" + laneIndex);
+                btn.classList.add("flash");
+                setTimeout(() => btn.classList.remove("flash"), 100);
+
+                updateStatus();
+                drawPreview();
+            });
+
+            // ════════════════════════════════════════════
+            //  실행취소
+            // ════════════════════════════════════════════
+            function undoLast() {
+                if (chart.length === 0) return;
+                chart.pop();
+                updateStatus();
+                drawPreview();
+            }
+
+            // ════════════════════════════════════════════
+            //  UI 업데이트
+            // ════════════════════════════════════════════
+            function updateStatus() {
+                const counts = [0, 0, 0, 0];
+                chart.forEach((n) => counts[n.lane]++);
+
+                document.getElementById("noteCount").textContent = chart.length;
+                document.getElementById("status").innerHTML =
+                    `총 ${chart.length}개<br>` +
+                    `D: ${counts[0]} &nbsp; F: ${counts[1]}<br>` +
+                    `J: ${counts[2]} &nbsp; K: ${counts[3]}`;
+            }
+
+            // ════════════════════════════════════════════
+            //  파형 그리기 (간단 버전)
+            // ════════════════════════════════════════════
+            function drawWaveform() {
+                const canvas = document.getElementById("waveCanvas");
+                const ctx = canvas.getContext("2d");
+                canvas.width = canvas.offsetWidth;
+                canvas.height = canvas.offsetHeight;
+
+                // AudioContext로 파형 추출
+                const ac = new AudioContext();
+                fetch(audio.src)
+                    .then((r) => r.arrayBuffer())
+                    .then((buf) => ac.decodeAudioData(buf))
+                    .then((decoded) => {
+                        const data = decoded.getChannelData(0);
+                        const step = Math.floor(data.length / canvas.width);
+                        const h = canvas.height;
+
+                        ctx.fillStyle = "#0d0d14";
+                        ctx.fillRect(0, 0, canvas.width, h);
+                        ctx.strokeStyle = "#4f46e5";
+                        ctx.lineWidth = 1;
+                        ctx.beginPath();
+
+                        for (let x = 0; x < canvas.width; x++) {
+                            let max = 0;
+                            for (let j = 0; j < step; j++) {
+                                const v = Math.abs(data[x * step + j] || 0);
+                                if (v > max) max = v;
+                            }
+                            const y = ((1 - max) * h) / 2;
+                            const y2 = ((1 + max) * h) / 2;
+                            if (x === 0) ctx.moveTo(x, h / 2);
+                            ctx.moveTo(x, y);
+                            ctx.lineTo(x, y2);
+                        }
+                        ctx.stroke();
+                    })
+                    .catch(() => {
+                        // 파형 추출 실패 시 그냥 선만
+                        ctx.fillStyle = "#0d0d14";
+                        ctx.fillRect(0, 0, canvas.width, canvas.height);
+                        ctx.strokeStyle = "#333";
+                        ctx.beginPath();
+                        ctx.moveTo(0, canvas.height / 2);
+                        ctx.lineTo(canvas.width, canvas.height / 2);
+                        ctx.stroke();
+                    });
+            }
+
+            // ════════════════════════════════════════════
+            //  BPM 그리드 그리기
+            // ════════════════════════════════════════════
+            function drawGrid() {
+                const canvas = document.getElementById("gridCanvas");
+                const ctx = canvas.getContext("2d");
+                canvas.width = canvas.offsetWidth;
+                canvas.height = canvas.offsetHeight;
+
+                const bpm =
+                    parseFloat(document.getElementById("bpmInput").value) ||
+                    120;
+                const offset =
+                    parseFloat(document.getElementById("offsetInput").value) ||
+                    0;
+                const snap =
+                    parseInt(document.getElementById("snapSelect").value) || 4;
+                const beatMs = 60000 / bpm;
+                const unitMs = (beatMs / snap) * 4;
+
+                const currentMs = audio.currentTime * 1000;
+                const windowMs = 4000; // 화면에 보여줄 시간 범위 (ms)
+                const startMs = currentMs - windowMs / 2;
+
+                ctx.fillStyle = "#0d0d14";
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // 그리드 선
+                const firstBeat =
+                    Math.ceil((startMs - offset) / unitMs) * unitMs + offset;
+                for (let t = firstBeat; t < startMs + windowMs; t += unitMs) {
+                    const x = ((t - startMs) / windowMs) * canvas.width;
+                    const isBeat = Math.abs((t - offset) % beatMs) < 1;
+                    ctx.strokeStyle = isBeat
+                        ? "rgba(123,111,240,0.6)"
+                        : "rgba(123,111,240,0.2)";
+                    ctx.lineWidth = isBeat ? 2 : 1;
+                    ctx.beginPath();
+                    ctx.moveTo(x, 0);
+                    ctx.lineTo(x, canvas.height);
+                    ctx.stroke();
+                }
+
+                // 재생 헤드
+                ctx.strokeStyle = "white";
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(canvas.width / 2, 0);
+                ctx.lineTo(canvas.width / 2, canvas.height);
+                ctx.stroke();
+            }
+
+            // ════════════════════════════════════════════
+            //  채보 미리보기
+            // ════════════════════════════════════════════
+            function drawPreview() {
+                const canvas = document.getElementById("previewCanvas");
+                const ctx = canvas.getContext("2d");
+                canvas.width = canvas.offsetWidth;
+                canvas.height = canvas.offsetHeight;
+
+                const duration = audio.duration * 1000 || 1;
+                const colors = ["#7b6ff0", "#a78bfa", "#60a5fa", "#34d399"];
+
+                ctx.fillStyle = "#0d0d14";
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // 레인 구분선
+                ctx.strokeStyle = "#1e1e2e";
+                [1, 2, 3].forEach((i) => {
+                    const y = (i / 4) * canvas.height;
+                    ctx.beginPath();
+                    ctx.moveTo(0, y);
+                    ctx.lineTo(canvas.width, y);
+                    ctx.stroke();
+                });
+
+                // 노트
+                chart.forEach((n) => {
+                    const x = (n.time / duration) * canvas.width;
+                    const y = (n.lane / 4) * canvas.height + 2;
+                    ctx.fillStyle = colors[n.lane];
+                    ctx.fillRect(x - 1, y, 2, canvas.height / 4 - 4);
+                });
+
+                // 재생 헤드
+                const headX =
+                    ((audio.currentTime * 1000) / duration) * canvas.width;
+                ctx.strokeStyle = "white";
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(headX, 0);
+                ctx.lineTo(headX, canvas.height);
+                ctx.stroke();
+            }
+
+            // ════════════════════════════════════════════
+            //  내보내기 / 초기화
+            // ════════════════════════════════════════════
+            function exportChart() {
+                if (chart.length === 0) {
+                    alert("노트가 없어요.");
+                    return;
+                }
+
+                const json = JSON.stringify(chart, null, 2);
+                const blob = new Blob([json], { type: "application/json" });
+                const a = document.createElement("a");
+                a.href = URL.createObjectURL(blob);
+                a.download = "chart.json";
+                a.click();
+            }
+
+            function clearAll() {
+                if (!confirm(`노트 ${chart.length}개를 전부 삭제할까요?`))
+                    return;
+                chart = [];
+                updateStatus();
+                drawPreview();
+            }
+
+            // 초기 그리드
+            drawGrid();
+        </script>
+    </body>
+</html>

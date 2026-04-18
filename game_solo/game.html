@@ -1,0 +1,703 @@
+<!doctype html>
+<html lang="ko">
+    <head>
+        <meta charset="UTF-8" />
+        <title>리듬게임</title>
+        <style>
+            * {
+                box-sizing: border-box;
+                margin: 0;
+                padding: 0;
+            }
+
+            body {
+                background: #0a0a0f;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                height: 100vh;
+                font-family: "Courier New", monospace;
+                overflow: hidden;
+            }
+
+            /* ── 테스트 패널 (VN에 붙일 땐 이 블록 제거) ── */
+            #testPanel {
+                position: fixed;
+                top: 16px;
+                left: 16px;
+                background: #0d0d14;
+                border: 1px solid #2a2a3a;
+                padding: 16px;
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+                z-index: 100;
+                font-size: 12px;
+                color: rgba(255, 255, 255, 0.5);
+            }
+            #testPanel label {
+                letter-spacing: 1px;
+            }
+            #testPanel input[type="file"] {
+                display: none;
+            }
+            .tbtn {
+                padding: 6px 12px;
+                background: transparent;
+                border: 1px solid #4f46e5;
+                color: #9b8fff;
+                font-size: 11px;
+                letter-spacing: 2px;
+                cursor: pointer;
+                font-family: inherit;
+            }
+            .tbtn:hover {
+                background: rgba(79, 70, 229, 0.2);
+            }
+            #callbackLog {
+                margin-top: 4px;
+                font-size: 11px;
+                color: #68d391;
+                min-height: 16px;
+            }
+
+            /* ════════════════════════════════
+           리겜 컨테이너 — VN에서 이 div만 올리면 됨
+           ════════════════════════════════ */
+            #rhythmGame {
+                position: relative;
+                display: none;
+                flex-direction: column;
+                align-items: center;
+                gap: 12px;
+            }
+
+            #ui {
+                display: flex;
+                gap: 40px;
+                color: #fff;
+                font-size: 18px;
+                letter-spacing: 2px;
+            }
+            #ui span {
+                opacity: 0.5;
+                font-size: 12px;
+                display: block;
+                text-align: center;
+            }
+
+            #game {
+                display: flex;
+                width: 400px;
+                height: 600px;
+                background: #0d0d14;
+                border: 1px solid #1e1e2e;
+                position: relative;
+                overflow: hidden;
+            }
+            #game::before {
+                content: "";
+                position: absolute;
+                inset: 0;
+                background: linear-gradient(
+                    to bottom,
+                    transparent 60%,
+                    rgba(100, 80, 255, 0.05) 100%
+                );
+                pointer-events: none;
+            }
+
+            .lane {
+                flex: 1;
+                border-right: 1px solid #1a1a2a;
+                position: relative;
+                transition: background 0.05s;
+            }
+            .lane:last-child {
+                border-right: none;
+            }
+            .lane.active {
+                background: rgba(255, 255, 255, 0.04);
+            }
+
+            .note {
+                position: absolute;
+                width: 82%;
+                height: 18px;
+                left: 9%;
+                border-radius: 3px;
+                background: linear-gradient(180deg, #7b6ff0, #4f46e5);
+                box-shadow: 0 0 10px rgba(100, 80, 255, 0.6);
+                z-index: 2;
+            }
+
+            #hitline {
+                position: absolute;
+                bottom: 80px;
+                width: 100%;
+                height: 3px;
+                background: rgba(255, 255, 255, 0.3);
+                z-index: 3;
+                pointer-events: none;
+            }
+
+            #keys {
+                display: flex;
+                width: 400px;
+                gap: 4px;
+            }
+            .key {
+                flex: 1;
+                height: 40px;
+                background: #111120;
+                border: 1px solid #2a2a3a;
+                border-radius: 4px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: #444;
+                font-size: 14px;
+                letter-spacing: 1px;
+                transition:
+                    background 0.05s,
+                    color 0.05s;
+            }
+            .key.active {
+                background: #2a2850;
+                color: #9b8fff;
+                border-color: #4f46e5;
+            }
+
+            #judge {
+                position: absolute;
+                top: 38%;
+                width: 100%;
+                text-align: center;
+                font-size: 26px;
+                font-weight: bold;
+                letter-spacing: 4px;
+                pointer-events: none;
+                z-index: 10;
+                transition: opacity 0.1s;
+            }
+
+            #resultScreen {
+                display: none;
+                position: absolute;
+                inset: 0;
+                background: rgba(10, 10, 15, 0.97);
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                gap: 12px;
+                z-index: 20;
+                color: white;
+            }
+            #resultScreen h2 {
+                font-size: 22px;
+                letter-spacing: 6px;
+                opacity: 0.6;
+            }
+            #resultScreen .big {
+                font-size: 48px;
+                letter-spacing: 2px;
+            }
+            #resultScreen .stats {
+                font-size: 13px;
+                opacity: 0.5;
+                line-height: 2;
+                text-align: center;
+                letter-spacing: 1px;
+            }
+            .rbtn {
+                padding: 10px 28px;
+                background: transparent;
+                border: 1px solid #4f46e5;
+                color: #9b8fff;
+                font-size: 13px;
+                letter-spacing: 3px;
+                cursor: pointer;
+                font-family: inherit;
+            }
+            .rbtn:hover {
+                background: rgba(79, 70, 229, 0.2);
+            }
+
+            #countdown {
+                display: none;
+                position: absolute;
+                inset: 0;
+                background: rgba(10, 10, 15, 0.85);
+                align-items: center;
+                justify-content: center;
+                font-size: 80px;
+                color: white;
+                z-index: 20;
+                letter-spacing: 4px;
+            }
+        </style>
+    </head>
+    <body>
+        <!-- 테스트 패널 (VN에 붙일 땐 제거) -->
+        <div id="testPanel">
+            <label>[ TEST PANEL ]</label>
+            <label class="tbtn" for="testAudio">♪ 음악 선택</label>
+            <input type="file" id="testAudio" accept="audio/*" />
+            <label class="tbtn" for="testChart">채보 JSON 선택</label>
+            <input type="file" id="testChart" accept=".json" />
+            <button class="tbtn" onclick="testStart()">
+                ▶ startRhythmGame() 호출
+            </button>
+            <div id="callbackLog">콜백 대기 중...</div>
+        </div>
+
+        <!-- 리겜 본체 — VN에서 이 div만 가져가면 됨 -->
+        <div id="rhythmGame">
+            <div id="ui">
+                <div>
+                    <span>SCORE</span>
+                    <div id="scoreVal">0</div>
+                </div>
+                <div>
+                    <span>COMBO</span>
+                    <div id="comboVal">0</div>
+                </div>
+                <div>
+                    <span>SPEED</span>
+                    <div id="speedVal">10</div>
+                </div>
+            </div>
+
+            <div id="game">
+                <div class="lane" id="lane0"></div>
+                <div class="lane" id="lane1"></div>
+                <div class="lane" id="lane2"></div>
+                <div class="lane" id="lane3"></div>
+                <div id="hitline"></div>
+                <div id="judge"></div>
+                <div id="countdown"></div>
+
+                <div id="resultScreen">
+                    <h2>RESULT</h2>
+                    <div class="big" id="resultScore">0</div>
+                    <div class="stats" id="resultStats"></div>
+                    <div style="display: flex; gap: 12px; margin-top: 8px">
+                        <button class="rbtn" onclick="retryGame()">
+                            RETRY
+                        </button>
+                        <button class="rbtn" onclick="finishGame()">
+                            FINISH
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="keys">
+                <div class="key" id="key0">D</div>
+                <div class="key" id="key1">F</div>
+                <div class="key" id="key2">J</div>
+                <div class="key" id="key3">K</div>
+            </div>
+        </div>
+
+        <audio id="audio"></audio>
+
+        <script>
+            // ════════════════════════════════════════════
+            //  설정
+            // ════════════════════════════════════════════
+            const HITLINE_BOTTOM = 80;
+            const PERFECT_RANGE = 25;
+            const GOOD_RANGE = 55;
+            const MISS_RANGE = 90;
+            const FALL_SPEED = 0.3;
+
+            // ════════════════════════════════════════════
+            //  내부 상태
+            // ════════════════════════════════════════════
+            const lanes = [0, 1, 2, 3].map((i) =>
+                document.getElementById("lane" + i),
+            );
+            const keyEls = [0, 1, 2, 3].map((i) =>
+                document.getElementById("key" + i),
+            );
+            const judgeEl = document.getElementById("judge");
+            const audio = document.getElementById("audio");
+            const keyMap = { d: 0, f: 1, j: 2, k: 3 };
+
+            let _chart = [];
+            let _onComplete = null;
+            let _clearScore = 0;
+            let notes = [];
+            let chartIndex = 0;
+            let score = 0;
+            let combo = 0;
+            let maxCombo = 0;
+            let judgeCounts = { Perfect: 0, Good: 0, Miss: 0 };
+            let speed = 10;
+            let gameRunning = false;
+            let judgeTimer = null;
+            let rafId = null;
+            let gameHeight = 0;
+            let hitlineY = 0;
+
+            // ════════════════════════════════════════════
+            //  공개 API
+            // ════════════════════════════════════════════
+
+            /**
+             * 리듬게임 시작
+             * @param {Array}    chartData  [{time: ms, lane: 0~3}, ...]
+             * @param {Function} onComplete 결과 콜백 ({clear, score, accuracy, maxCombo, judges})
+             * @param {string}   audioSrc   음악 URL 또는 blob URL
+             * @param {Object}   options    { speed: 10, clearScore: 0 }
+             */
+            function startRhythmGame(
+                chartData,
+                onComplete,
+                audioSrc,
+                options = {},
+            ) {
+                _chart = chartData;
+                _onComplete = onComplete;
+                _clearScore = options.clearScore ?? 0;
+                speed = options.speed ?? 10;
+
+                audio.src = audioSrc;
+                audio.load();
+
+                document.getElementById("rhythmGame").style.display = "flex";
+                document.getElementById("speedVal").textContent = speed;
+
+                _resetState();
+                _countdown(3, _startLoop);
+            }
+
+            /**
+             * 리듬게임 강제 종료 (VN 씬 전환 등)
+             */
+            function stopRhythmGame() {
+                _endGame(false);
+            }
+
+            // ════════════════════════════════════════════
+            //  내부 — 초기화
+            // ════════════════════════════════════════════
+            function _resetState() {
+                notes = [];
+                chartIndex = 0;
+                score = 0;
+                combo = 0;
+                maxCombo = 0;
+                judgeCounts = { Perfect: 0, Good: 0, Miss: 0 };
+                gameHeight = document.getElementById("game").offsetHeight;
+                hitlineY = gameHeight - HITLINE_BOTTOM;
+
+                lanes.forEach((l) =>
+                    l.querySelectorAll(".note").forEach((n) => n.remove()),
+                );
+                document.getElementById("resultScreen").style.display = "none";
+                judgeEl.style.opacity = "0";
+                _updateUI();
+            }
+
+            // ════════════════════════════════════════════
+            //  내부 — 카운트다운
+            // ════════════════════════════════════════════
+            function _countdown(count, cb) {
+                const el = document.getElementById("countdown");
+                el.style.display = "flex";
+                el.textContent = count;
+
+                const tick = () => {
+                    count--;
+                    if (count <= 0) {
+                        el.style.display = "none";
+                        cb();
+                    } else {
+                        el.textContent = count;
+                        setTimeout(tick, 1000);
+                    }
+                };
+                setTimeout(tick, 1000);
+            }
+
+            // ════════════════════════════════════════════
+            //  내부 — 게임 루프
+            // ════════════════════════════════════════════
+            function _startLoop() {
+                audio.currentTime = 0;
+                audio.play();
+                gameRunning = true;
+                audio.onended = () => _endGame(true);
+                rafId = requestAnimationFrame(_gameLoop);
+            }
+
+            function _gameLoop() {
+                if (!gameRunning) return;
+                const currentTime = audio.currentTime * 1000;
+                _spawnNotes(currentTime);
+                _updateNotes(currentTime);
+                rafId = requestAnimationFrame(_gameLoop);
+            }
+
+            // ════════════════════════════════════════════
+            //  내부 — 노트 스폰 / 업데이트
+            // ════════════════════════════════════════════
+            function _spawnNotes(currentTime) {
+                const travelTime = hitlineY / (speed * FALL_SPEED);
+                while (chartIndex < _chart.length) {
+                    const nd = _chart[chartIndex];
+                    if (currentTime + travelTime < nd.time) break;
+                    _spawnNote(nd.lane, nd.time);
+                    chartIndex++;
+                }
+            }
+
+            function _spawnNote(laneIndex, noteTime) {
+                const el = document.createElement("div");
+                el.className = "note";
+                lanes[laneIndex].appendChild(el);
+                notes.push({
+                    el,
+                    laneIndex,
+                    noteTime,
+                    hit: false,
+                    missed: false,
+                });
+            }
+
+            function _updateNotes(currentTime) {
+                const travelTime = hitlineY / (speed * FALL_SPEED);
+                for (let i = notes.length - 1; i >= 0; i--) {
+                    const note = notes[i];
+                    if (note.hit || note.missed) continue;
+
+                    const elapsed = currentTime - (note.noteTime - travelTime);
+                    const y = (elapsed / travelTime) * hitlineY;
+                    note.el.style.top = y + "px";
+
+                    if (y > hitlineY + MISS_RANGE) {
+                        note.missed = true;
+                        note.el.remove();
+                        notes.splice(i, 1);
+                        combo = 0;
+                        judgeCounts.Miss++;
+                        _showJudge("MISS", "#666");
+                        _updateUI();
+                    }
+                }
+            }
+
+            // ════════════════════════════════════════════
+            //  내부 — 판정
+            // ════════════════════════════════════════════
+            function _judge(note, result, color, points) {
+                note.hit = true;
+                note.el.remove();
+                const idx = notes.indexOf(note);
+                if (idx !== -1) notes.splice(idx, 1);
+
+                if (result !== "MISS") {
+                    score += points + combo * 2;
+                    combo++;
+                    maxCombo = Math.max(maxCombo, combo);
+                    judgeCounts[
+                        result.charAt(0) + result.slice(1).toLowerCase()
+                    ]++;
+                } else {
+                    combo = 0;
+                    judgeCounts.Miss++;
+                }
+
+                _showJudge(result, color);
+                _updateUI();
+            }
+
+            // ════════════════════════════════════════════
+            //  내부 — 종료
+            // ════════════════════════════════════════════
+            function _endGame(natural) {
+                gameRunning = false;
+                audio.pause();
+                cancelAnimationFrame(rafId);
+
+                const total =
+                    judgeCounts.Perfect + judgeCounts.Good + judgeCounts.Miss;
+                const accuracy =
+                    total > 0
+                        ? ((judgeCounts.Perfect * 100 + judgeCounts.Good * 60) /
+                              (total * 100)) *
+                          100
+                        : 0;
+                const clear = _clearScore > 0 ? score >= _clearScore : natural;
+
+                document.getElementById("resultScore").textContent =
+                    score.toLocaleString();
+                document.getElementById("resultStats").innerHTML =
+                    `PERFECT &nbsp; ${judgeCounts.Perfect}<br>` +
+                    `GOOD &nbsp;&nbsp;&nbsp;&nbsp; ${judgeCounts.Good}<br>` +
+                    `MISS &nbsp;&nbsp;&nbsp;&nbsp; ${judgeCounts.Miss}<br><br>` +
+                    `MAX COMBO &nbsp; ${maxCombo}<br>` +
+                    `ACCURACY &nbsp; ${accuracy.toFixed(1)}%`;
+                document.getElementById("resultScreen").style.display = "flex";
+
+                if (_onComplete) {
+                    _onComplete({
+                        clear,
+                        score,
+                        accuracy: parseFloat(accuracy.toFixed(1)),
+                        maxCombo,
+                        judges: { ...judgeCounts },
+                    });
+                }
+            }
+
+            function retryGame() {
+                _resetState();
+                _countdown(3, _startLoop);
+            }
+
+            function finishGame() {
+                document.getElementById("rhythmGame").style.display = "none";
+                document.getElementById("resultScreen").style.display = "none";
+            }
+
+            // ════════════════════════════════════════════
+            //  내부 — UI
+            // ════════════════════════════════════════════
+            function _showJudge(text, color) {
+                judgeEl.textContent = text;
+                judgeEl.style.color = color;
+                judgeEl.style.opacity = "1";
+                clearTimeout(judgeTimer);
+                judgeTimer = setTimeout(() => {
+                    judgeEl.style.opacity = "0";
+                }, 400);
+            }
+
+            function _updateUI() {
+                document.getElementById("scoreVal").textContent =
+                    score.toLocaleString();
+                document.getElementById("comboVal").textContent = combo;
+            }
+
+            // ════════════════════════════════════════════
+            //  키 입력
+            // ════════════════════════════════════════════
+            document.addEventListener("keydown", (e) => {
+                if (e.repeat) return;
+                if (e.key === "ArrowUp") {
+                    speed = Math.min(30, speed + 1);
+                    document.getElementById("speedVal").textContent = speed;
+                    return;
+                }
+                if (e.key === "ArrowDown") {
+                    speed = Math.max(1, speed - 1);
+                    document.getElementById("speedVal").textContent = speed;
+                    return;
+                }
+                if (!gameRunning) return;
+
+                const laneIndex = keyMap[e.key.toLowerCase()];
+                if (laneIndex === undefined) return;
+
+                keyEls[laneIndex].classList.add("active");
+                lanes[laneIndex].classList.add("active");
+
+                const candidate = notes
+                    .filter(
+                        (n) => n.laneIndex === laneIndex && !n.hit && !n.missed,
+                    )
+                    .sort((a, b) => {
+                        const aY = parseFloat(a.el.style.top) || 0;
+                        const bY = parseFloat(b.el.style.top) || 0;
+                        return (
+                            Math.abs(aY - hitlineY) - Math.abs(bY - hitlineY)
+                        );
+                    })[0];
+
+                if (!candidate) return;
+
+                const noteY = parseFloat(candidate.el.style.top) || 0;
+                const diff = Math.abs(noteY - hitlineY);
+
+                if (diff <= PERFECT_RANGE)
+                    _judge(candidate, "PERFECT", "#a8edff", 300);
+                else if (diff <= GOOD_RANGE)
+                    _judge(candidate, "GOOD", "#a0ffa0", 100);
+                else if (diff <= MISS_RANGE)
+                    _judge(candidate, "MISS", "#666", 0);
+            });
+
+            document.addEventListener("keyup", (e) => {
+                const laneIndex = keyMap[e.key.toLowerCase()];
+                if (laneIndex === undefined) return;
+                keyEls[laneIndex].classList.remove("active");
+                lanes[laneIndex].classList.remove("active");
+            });
+
+            // ════════════════════════════════════════════
+            //  테스트 패널 (VN에 붙일 땐 제거)
+            // ════════════════════════════════════════════
+            let _testAudioSrc = null;
+            let _testChart = null;
+
+            document
+                .getElementById("testAudio")
+                .addEventListener("change", (e) => {
+                    const file = e.target.files[0];
+                    if (!file) return;
+                    _testAudioSrc = URL.createObjectURL(file);
+                    document.getElementById("callbackLog").textContent =
+                        "음악 로드됨";
+                    _checkTestReady();
+                });
+
+            document
+                .getElementById("testChart")
+                .addEventListener("change", (e) => {
+                    const file = e.target.files[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = (ev) => {
+                        try {
+                            _testChart = JSON.parse(ev.target.result);
+                            document.getElementById("callbackLog").textContent =
+                                `채보 로드됨 (${_testChart.length}노트)`;
+                            _checkTestReady();
+                        } catch {
+                            alert("올바른 JSON이 아님");
+                        }
+                    };
+                    reader.readAsText(file);
+                });
+
+            function _checkTestReady() {
+                if (_testAudioSrc && _testChart) {
+                    document.getElementById("callbackLog").textContent =
+                        "준비 완료 — ▶ 눌러서 시작";
+                }
+            }
+
+            function testStart() {
+                if (!_testAudioSrc || !_testChart) {
+                    alert("음악이랑 채보 JSON 둘 다 선택해줘");
+                    return;
+                }
+                document.getElementById("callbackLog").textContent =
+                    "실행 중...";
+                startRhythmGame(
+                    _testChart,
+                    (result) => {
+                        document.getElementById("callbackLog").textContent =
+                            `clear=${result.clear} / score=${result.score} / acc=${result.accuracy}%`;
+                        console.log("[리겜 콜백]", result);
+                    },
+                    _testAudioSrc,
+                    { speed: 10, clearScore: 0 },
+                );
+            }
+        </script>
+    </body>
+</html>

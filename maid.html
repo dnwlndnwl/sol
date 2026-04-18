@@ -1,0 +1,908 @@
+<!doctype html>
+<html lang="ko">
+    <head>
+        <meta charset="UTF-8" />
+        <title>VN 뼈대</title>
+        <style>
+            @import url("https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;600&family=Noto+Sans+KR:wght@300;400&display=swap");
+
+            :root {
+                --bg: #0a0a0f;
+                --panel: rgba(10, 10, 20, 0.85);
+                --border: rgba(255, 255, 255, 0.08);
+                --accent-a: #f97316; /* 츤데레 - 주황 */
+                --accent-a2: #34d399; /* 츤데레 - 에메랄드 (눈 포인트) */
+                --accent-b: #94a3b8; /* 소심이 - 차분한 블루그레이 */
+                --text: #f0eee8;
+                --muted: #888;
+            }
+
+            * {
+                box-sizing: border-box;
+                margin: 0;
+                padding: 0;
+            }
+
+            body {
+                background: var(--bg);
+                color: var(--text);
+                font-family: "Noto Sans KR", sans-serif;
+                height: 100vh;
+                overflow: hidden;
+            }
+
+            /* ── 게임 전체 ── */
+            #game {
+                position: relative;
+                width: 100vw;
+                height: 100vh;
+            }
+
+            /* ── 배경 ── */
+            #background {
+                position: absolute;
+                inset: 0;
+                background: linear-gradient(
+                    160deg,
+                    #0d0d1a 0%,
+                    #1a0d1a 50%,
+                    #0d1a1a 100%
+                );
+                transition: background 1s ease;
+            }
+
+            /* ── 캐릭터 ── */
+            #characters {
+                position: absolute;
+                bottom: 220px;
+                left: 0;
+                right: 0;
+                display: flex;
+                justify-content: center;
+                gap: 80px;
+                pointer-events: none;
+            }
+            .character-img {
+                height: 55vh;
+                object-fit: contain;
+                transition:
+                    opacity 0.4s,
+                    filter 0.4s;
+                filter: brightness(0.7);
+            }
+            .character-img.active {
+                filter: brightness(1);
+            }
+
+            /* ── 상단 HUD ── */
+            #hud {
+                position: absolute;
+                top: 16px;
+                right: 20px;
+                display: flex;
+                gap: 12px;
+                z-index: 10;
+            }
+
+            .stat-box {
+                background: var(--panel);
+                border: 1px solid var(--border);
+                border-radius: 8px;
+                padding: 6px 12px;
+                font-size: 12px;
+                display: flex;
+                flex-direction: column;
+                gap: 3px;
+                min-width: 90px;
+            }
+            .stat-label {
+                font-size: 10px;
+                color: var(--muted);
+                letter-spacing: 0.05em;
+            }
+            .stat-bar-wrap {
+                height: 4px;
+                background: rgba(255, 255, 255, 0.1);
+                border-radius: 2px;
+                overflow: hidden;
+            }
+            .stat-bar {
+                height: 100%;
+                border-radius: 2px;
+                transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            }
+            .stat-bar.a {
+                background: linear-gradient(
+                    90deg,
+                    var(--accent-a),
+                    var(--accent-a2)
+                );
+            }
+            .stat-bar.b {
+                background: var(--accent-b);
+            }
+            .stat-value {
+                font-size: 11px;
+                font-weight: 600;
+            }
+
+            /* ── 인벤토리 버튼 ── */
+            #inv-btn {
+                position: absolute;
+                top: 16px;
+                left: 20px;
+                background: var(--panel);
+                border: 1px solid var(--border);
+                border-radius: 8px;
+                padding: 6px 14px;
+                color: var(--text);
+                font-size: 12px;
+                cursor: pointer;
+                z-index: 10;
+                transition: border-color 0.2s;
+            }
+            #inv-btn:hover {
+                border-color: rgba(255, 255, 255, 0.3);
+            }
+
+            /* ── 인벤토리 패널 ── */
+            #inv-panel {
+                position: absolute;
+                top: 50px;
+                left: 20px;
+                background: rgba(10, 10, 20, 0.95);
+                border: 1px solid var(--border);
+                border-radius: 12px;
+                padding: 16px;
+                min-width: 200px;
+                z-index: 20;
+                display: none;
+            }
+            #inv-panel h3 {
+                font-size: 12px;
+                color: var(--muted);
+                letter-spacing: 0.1em;
+                margin-bottom: 10px;
+            }
+            .inv-item {
+                font-size: 13px;
+                padding: 4px 0;
+                border-bottom: 1px solid var(--border);
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+            .inv-item:last-child {
+                border-bottom: none;
+            }
+            #inv-empty {
+                font-size: 12px;
+                color: var(--muted);
+            }
+
+            /* ── 대사 창 ── */
+            #dialogue {
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                background: var(--panel);
+                border-top: 1px solid var(--border);
+                padding: 24px 32px 28px;
+                backdrop-filter: blur(12px);
+            }
+
+            #speaker {
+                font-family: "Noto Serif KR", serif;
+                font-size: 14px;
+                font-weight: 600;
+                letter-spacing: 0.08em;
+                margin-bottom: 10px;
+                color: var(--muted);
+                transition: color 0.3s;
+            }
+            #speaker.char-a {
+                color: var(--accent-a);
+            }
+            #speaker.char-b {
+                color: var(--accent-b);
+            }
+
+            #text {
+                font-size: 16px;
+                line-height: 1.8;
+                min-height: 52px;
+                margin-bottom: 16px;
+                letter-spacing: 0.02em;
+            }
+
+            /* ── 선택지 ── */
+            #choices {
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+            }
+
+            .choice {
+                background: rgba(255, 255, 255, 0.04);
+                border: 1px solid var(--border);
+                border-radius: 8px;
+                color: var(--text);
+                font-family: "Noto Sans KR", sans-serif;
+                font-size: 14px;
+                padding: 10px 16px;
+                cursor: pointer;
+                text-align: left;
+                transition:
+                    background 0.2s,
+                    border-color 0.2s;
+            }
+            .choice:hover:not(:disabled) {
+                background: rgba(255, 255, 255, 0.09);
+                border-color: rgba(255, 255, 255, 0.2);
+            }
+            .choice:disabled {
+                opacity: 0.3;
+                cursor: not-allowed;
+            }
+            .choice.locked::after {
+                content: " 🔒";
+                font-size: 11px;
+                color: var(--muted);
+            }
+
+            /* ── 다음 버튼 ── */
+            #next-btn {
+                display: none;
+                background: none;
+                border: none;
+                color: var(--muted);
+                font-size: 12px;
+                cursor: pointer;
+                letter-spacing: 0.1em;
+                margin-top: 8px;
+                padding: 4px 0;
+                transition: color 0.2s;
+            }
+            #next-btn:hover {
+                color: var(--text);
+            }
+
+            /* ── 알림 토스트 ── */
+            #toast {
+                position: absolute;
+                top: 60px;
+                left: 50%;
+                transform: translateX(-50%) translateY(-20px);
+                background: rgba(255, 255, 255, 0.1);
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                border-radius: 20px;
+                padding: 8px 20px;
+                font-size: 13px;
+                opacity: 0;
+                pointer-events: none;
+                transition:
+                    opacity 0.3s,
+                    transform 0.3s;
+                z-index: 30;
+                white-space: nowrap;
+            }
+            #toast.show {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0);
+            }
+
+            /* ── 리겜 전환 플레이스홀더 ── */
+            #rhythm-overlay {
+                position: absolute;
+                inset: 0;
+                background: #000;
+                display: none;
+                align-items: center;
+                justify-content: center;
+                flex-direction: column;
+                gap: 16px;
+                z-index: 50;
+            }
+            #rhythm-overlay h2 {
+                font-family: "Noto Serif KR", serif;
+                font-size: 24px;
+                letter-spacing: 0.2em;
+            }
+            #rhythm-overlay p {
+                font-size: 13px;
+                color: var(--muted);
+            }
+            #rhythm-skip {
+                margin-top: 20px;
+                background: none;
+                border: 1px solid var(--border);
+                border-radius: 8px;
+                color: var(--text);
+                padding: 10px 24px;
+                cursor: pointer;
+                font-size: 14px;
+                transition: border-color 0.2s;
+            }
+            #rhythm-skip:hover {
+                border-color: rgba(255, 255, 255, 0.4);
+            }
+        </style>
+    </head>
+    <body>
+        <div id="game">
+            <div id="background"></div>
+
+            <!-- 캐릭터 -->
+            <div id="characters">
+                <img
+                    class="character-img"
+                    id="char-a"
+                    src=""
+                    alt="A"
+                    style="display: none"
+                />
+                <img
+                    class="character-img"
+                    id="char-b"
+                    src=""
+                    alt="B"
+                    style="display: none"
+                />
+            </div>
+
+            <!-- HUD -->
+            <div id="hud">
+                <div class="stat-box">
+                    <span class="stat-label">여주 A 호감도</span>
+                    <div class="stat-bar-wrap">
+                        <div
+                            class="stat-bar a"
+                            id="bar-a"
+                            style="width: 0%"
+                        ></div>
+                    </div>
+                    <span class="stat-value" id="val-a">0</span>
+                </div>
+                <div class="stat-box">
+                    <span class="stat-label">여주 B 호감도</span>
+                    <div class="stat-bar-wrap">
+                        <div
+                            class="stat-bar b"
+                            id="bar-b"
+                            style="width: 0%"
+                        ></div>
+                    </div>
+                    <span class="stat-value" id="val-b">0</span>
+                </div>
+            </div>
+
+            <!-- 인벤토리 -->
+            <button id="inv-btn" onclick="toggleInv()">🎒 소지품</button>
+            <div id="inv-panel">
+                <h3>INVENTORY</h3>
+                <div id="inv-list"><span id="inv-empty">없음</span></div>
+            </div>
+
+            <!-- 대사창 -->
+            <div id="dialogue">
+                <div id="speaker"></div>
+                <div id="text"></div>
+                <div id="choices"></div>
+                <button id="next-btn" onclick="nextScene()">▶ 계속</button>
+            </div>
+
+            <!-- 토스트 -->
+            <div id="toast"></div>
+
+            <!-- 리듬게임 전환 플레이스홀더 (나중에 실제 리겜으로 교체) -->
+            <div id="rhythm-overlay">
+                <h2>RHYTHM GAME</h2>
+                <p id="rhythm-desc">여기서 리듬게임이 실행됩니다</p>
+                <button id="rhythm-skip" onclick="endRhythm(70)">
+                    임시: 70점으로 클리어
+                </button>
+            </div>
+        </div>
+
+        <script>
+            // ══════════════════════════════════════════
+            //  게임 상태
+            // ══════════════════════════════════════════
+            const state = {
+                affection: { a: 0, b: 0 }, // 실제 호감도 (0~100)
+                pendingAffect: { a: 0, b: 0 }, // 챕터 중 누적값 (챕터 끝에 반영)
+                inventory: [],
+                current: "start",
+                rhythmPending: null,
+            };
+
+            // ══════════════════════════════════════════
+            //  스토리 데이터
+            //  씬 타입:
+            //    "dialogue" - 대사 (next로 이동)
+            //    "choice"   - 선택지
+            //    "rhythm"   - 리듬게임 트리거
+            //    "item"     - 아이템 획득 후 next
+            //    "end"      - 엔딩
+            // ══════════════════════════════════════════
+            const story = {
+                // ── 프롤로그 ──
+                start: {
+                    type: "dialogue",
+                    speaker: "",
+                    speakerClass: "",
+                    bg: "classroom",
+                    text: "전학 첫날. 교실 문을 여는 순간, 시선들이 일제히 쏟아진다.",
+                    next: "start2",
+                },
+                start2: {
+                    type: "dialogue",
+                    speaker: "여주 A",
+                    speakerClass: "char-a",
+                    text: "...흥. 또 전학생이야? 어차피 금방 적응 못하고 혼자 될 텐데.",
+                    next: "start3",
+                },
+                start3: {
+                    type: "dialogue",
+                    speaker: "여주 B",
+                    speakerClass: "char-b",
+                    text: "....",
+                    next: "start4",
+                },
+                start4: {
+                    type: "dialogue",
+                    speaker: "여주 B",
+                    speakerClass: "char-b",
+                    text: "(조용히) ...잘 부탁드려요.",
+                    next: "tuto_intro",
+                },
+                tuto_intro: {
+                    type: "dialogue",
+                    speaker: "여주 A",
+                    speakerClass: "char-a",
+                    text: "우리 반에서 리듬게임 대회 나간다는 거 알아? 신입도 한 번 해봐. 어차피 못 하겠지만.",
+                    next: "rhythm_tuto",
+                },
+
+                // ── 튜토리얼 리겜 ──
+                rhythm_tuto: {
+                    type: "rhythm",
+                    desc: "튜토리얼 — 여주 A가 지켜보고 있다",
+                    // 리겜 결과 → 분기
+                    onResult: (score) => {
+                        if (score >= 80) return "result_perfect";
+                        if (score >= 50) return "result_good";
+                        return "result_bad";
+                    },
+                },
+
+                // ── 리겜 결과 분기 ──
+                result_perfect: {
+                    type: "dialogue",
+                    speaker: "여주 A",
+                    speakerClass: "char-a",
+                    text: "그, 그정도는... 나도 할 수 있거든?!",
+                    affectDelta: { a: 10, b: 0 },
+                    next: "result_perfect_b",
+                },
+                result_perfect_b: {
+                    type: "dialogue",
+                    speaker: "여주 B",
+                    speakerClass: "char-b",
+                    text: "......",
+                    affectDelta: { a: 0, b: 8 },
+                    next: "choice1",
+                },
+
+                result_good: {
+                    type: "dialogue",
+                    speaker: "여주 A",
+                    speakerClass: "char-a",
+                    text: "흥, 그럭저럭이네. 아직 멀었어.",
+                    affectDelta: { a: 5, b: 0 },
+                    next: "result_good_b",
+                },
+                result_good_b: {
+                    type: "dialogue",
+                    speaker: "여주 B",
+                    speakerClass: "char-b",
+                    text: "...잘하셨어요.",
+                    affectDelta: { a: 0, b: 5 },
+                    next: "choice1",
+                },
+
+                result_bad: {
+                    type: "dialogue",
+                    speaker: "여주 A",
+                    speakerClass: "char-a",
+                    text: "...역시. 그냥 포기해.",
+                    affectDelta: { a: 2, b: 0 },
+                    next: "result_bad_b",
+                },
+                result_bad_b: {
+                    type: "dialogue",
+                    speaker: "여주 B",
+                    speakerClass: "char-b",
+                    text: "(걱정스럽게) ...괜찮으세요?",
+                    affectDelta: { a: 0, b: 8 },
+                    next: "choice1",
+                },
+
+                // ── 첫 번째 선택지 ──
+                choice1: {
+                    type: "choice",
+                    speaker: "",
+                    speakerClass: "",
+                    text: "뭐라고 대답할까.",
+                    choices: [
+                        {
+                            text: '"재밌는데? 다음엔 더 잘할 수 있을 것 같아."',
+                            next: "c1_confident",
+                            affectDelta: { a: 5, b: 3 },
+                        },
+                        {
+                            text: '"가르쳐줄 수 있어?" (여주 A를 보며)',
+                            next: "c1_ask_a",
+                            affectDelta: { a: 8, b: 0 },
+                        },
+                        {
+                            text: '"...고마워요." (여주 B에게 조용히)',
+                            next: "c1_ask_b",
+                            affectDelta: { a: 0, b: 10 },
+                        },
+                    ],
+                },
+
+                c1_confident: {
+                    type: "dialogue",
+                    speaker: "여주 A",
+                    speakerClass: "char-a",
+                    text: "흥. 자신감은 넘치네.",
+                    next: "day1_end",
+                },
+                c1_ask_a: {
+                    type: "dialogue",
+                    speaker: "여주 A",
+                    speakerClass: "char-a",
+                    text: "...뭐? 내가 왜? ...별 수 없네. 딱 한 번만이야.",
+                    next: "day1_end",
+                },
+                c1_ask_b: {
+                    type: "dialogue",
+                    speaker: "여주 B",
+                    speakerClass: "char-b",
+                    text: "...네. (살짝 미소)",
+                    next: "day1_end",
+                },
+
+                // ── 1일차 종료 — 호감도 반영 + 아이템 획득 ──
+                day1_end: {
+                    type: "chapter_end",
+                    speaker: "",
+                    speakerClass: "",
+                    text: "교실을 나서다 책상 위에 놓인 쪽지를 발견했다.",
+                    item: { id: "note_day1", name: "낡은 쪽지", icon: "📝" },
+                    next: "day2_start",
+                },
+
+                // ── 2일차 (예시: 아이템 조건 선택지) ──
+                day2_start: {
+                    type: "dialogue",
+                    speaker: "",
+                    speakerClass: "",
+                    text: "다음 날 아침.",
+                    next: "choice2",
+                },
+                choice2: {
+                    type: "choice",
+                    speaker: "",
+                    speakerClass: "",
+                    text: "어떻게 할까.",
+                    choices: [
+                        {
+                            text: "쪽지를 여주 A에게 보여준다",
+                            next: "c2_show_note",
+                            requires: "note_day1", // 아이템 조건
+                            affectDelta: { a: 12, b: 0 },
+                        },
+                        {
+                            text: "그냥 넘어간다",
+                            next: "c2_skip",
+                            affectDelta: { a: 0, b: 0 },
+                        },
+                    ],
+                },
+
+                c2_show_note: {
+                    type: "dialogue",
+                    speaker: "여주 A",
+                    speakerClass: "char-a",
+                    text: "...이거, 내가 쓴 거 아니야. 절대로.",
+                    next: "placeholder_end",
+                },
+                c2_skip: {
+                    type: "dialogue",
+                    speaker: "",
+                    speakerClass: "",
+                    text: "쪽지는 주머니 속에 그대로 남았다.",
+                    next: "placeholder_end",
+                },
+
+                placeholder_end: {
+                    type: "end",
+                    speaker: "",
+                    speakerClass: "",
+                    text: "— 여기까지 프롤로그 뼈대 —\n\n스토리를 계속 추가해주세요.",
+                },
+            };
+
+            // ══════════════════════════════════════════
+            //  씬 렌더링
+            // ══════════════════════════════════════════
+            function showScene(name) {
+                state.current = name;
+                const scene = story[name];
+                if (!scene) {
+                    console.error("씬 없음:", name);
+                    return;
+                }
+
+                // 호감도는 pending에만 누적 (챕터 끝에 반영)
+                if (scene.affectDelta) {
+                    state.pendingAffect.a += scene.affectDelta.a ?? 0;
+                    state.pendingAffect.b += scene.affectDelta.b ?? 0;
+                }
+
+                switch (scene.type) {
+                    case "dialogue":
+                        renderDialogue(scene);
+                        break;
+                    case "choice":
+                        renderChoice(scene);
+                        break;
+                    case "rhythm":
+                        startRhythm(scene);
+                        break;
+                    case "item":
+                        renderItem(scene);
+                        break;
+                    case "chapter_end":
+                        renderChapterEnd(scene);
+                        break;
+                    case "end":
+                        renderEnd(scene);
+                        break;
+                }
+            }
+
+            function renderDialogue(scene) {
+                setSpeaker(scene.speaker, scene.speakerClass);
+                setText(scene.text);
+                document.getElementById("choices").innerHTML = "";
+                const nb = document.getElementById("next-btn");
+                nb.style.display = "block";
+                nb._next = scene.next;
+            }
+
+            function renderChoice(scene) {
+                setSpeaker(scene.speaker, scene.speakerClass);
+                setText(scene.text);
+                document.getElementById("next-btn").style.display = "none";
+
+                const choicesEl = document.getElementById("choices");
+                choicesEl.innerHTML = "";
+
+                scene.choices.forEach((c) => {
+                    const btn = document.createElement("button");
+                    btn.className = "choice";
+
+                    const locked =
+                        c.requires && !state.inventory.includes(c.requires);
+                    if (locked) {
+                        btn.disabled = true;
+                        btn.classList.add("locked");
+                        const item = Object.values(story).find(
+                            (s) => s.item?.id === c.requires,
+                        );
+                        btn.textContent = c.text;
+                        btn.title = `필요 아이템: ${item?.item?.name ?? c.requires}`;
+                    } else {
+                        btn.textContent = c.text;
+                        btn.onclick = () => {
+                            if (c.affectDelta) {
+                                state.pendingAffect.a += c.affectDelta.a ?? 0;
+                                state.pendingAffect.b += c.affectDelta.b ?? 0;
+                            }
+                            showScene(c.next);
+                        };
+                    }
+                    choicesEl.appendChild(btn);
+                });
+            }
+
+            function renderItem(scene) {
+                setSpeaker(scene.speaker, scene.speakerClass);
+                setText(scene.text);
+                document.getElementById("choices").innerHTML = "";
+
+                // 아이템 추가
+                if (scene.item && !state.inventory.includes(scene.item.id)) {
+                    state.inventory.push(scene.item.id);
+                    updateInventoryUI();
+                    showToast(`${scene.item.icon} [${scene.item.name}] 획득!`);
+                }
+
+                const nb = document.getElementById("next-btn");
+                nb.style.display = "block";
+                nb._next = scene.next;
+            }
+
+            function renderChapterEnd(scene) {
+                setSpeaker(scene.speaker ?? "", scene.speakerClass ?? "");
+                setText(scene.text ?? "");
+                document.getElementById("choices").innerHTML = "";
+
+                // pending 호감도 한번에 반영
+                const pa = state.pendingAffect;
+                if (pa.a !== 0 || pa.b !== 0) {
+                    applyAffect({ a: pa.a, b: pa.b });
+                    const msgs = [];
+                    if (pa.a > 0) msgs.push(`A +${pa.a}`);
+                    if (pa.b > 0) msgs.push(`B +${pa.b}`);
+                    if (pa.a < 0) msgs.push(`A ${pa.a}`);
+                    if (pa.b < 0) msgs.push(`B ${pa.b}`);
+                    if (msgs.length)
+                        showToast(`호감도 반영: ${msgs.join(" / ")}`);
+                    state.pendingAffect = { a: 0, b: 0 };
+                }
+
+                // 아이템 획득
+                if (scene.item && !state.inventory.includes(scene.item.id)) {
+                    state.inventory.push(scene.item.id);
+                    updateInventoryUI();
+                    setTimeout(
+                        () =>
+                            showToast(
+                                `${scene.item.icon} [${scene.item.name}] 획득!`,
+                            ),
+                        2800,
+                    );
+                }
+
+                const nb = document.getElementById("next-btn");
+                nb.style.display = "block";
+                nb._next = scene.next;
+            }
+
+            function renderEnd(scene) {
+                setSpeaker(scene.speaker, scene.speakerClass);
+                setText(scene.text);
+                document.getElementById("choices").innerHTML = "";
+                document.getElementById("next-btn").style.display = "none";
+            }
+
+            // ══════════════════════════════════════════
+            //  리듬게임 인터페이스
+            // ══════════════════════════════════════════
+            function startRhythm(scene) {
+                state.rhythmPending = scene;
+                const overlay = document.getElementById("rhythm-overlay");
+                document.getElementById("rhythm-desc").textContent =
+                    scene.desc || "리듬게임";
+                overlay.style.display = "flex";
+                // TODO: 실제 리겜 모듈 실행
+            }
+
+            function endRhythm(score) {
+                document.getElementById("rhythm-overlay").style.display =
+                    "none";
+                const scene = state.rhythmPending;
+                if (!scene) return;
+
+                // 점수 → pending 호감도 누적 (챕터 끝에 반영)
+                const bonus = Math.round((score / 100) * 15);
+                state.pendingAffect.a += bonus;
+                state.pendingAffect.b += bonus;
+
+                const nextScene = scene.onResult
+                    ? scene.onResult(score)
+                    : scene.next;
+                showScene(nextScene);
+            }
+
+            // ══════════════════════════════════════════
+            //  유틸
+            // ══════════════════════════════════════════
+            function nextScene() {
+                const nb = document.getElementById("next-btn");
+                if (nb._next) showScene(nb._next);
+            }
+
+            function setSpeaker(name, cls) {
+                const el = document.getElementById("speaker");
+                el.textContent = name || "";
+                el.className = cls || "";
+            }
+
+            function setText(t) {
+                document.getElementById("text").textContent = t || "";
+            }
+
+            function applyAffect(delta) {
+                if (delta.a)
+                    state.affection.a = Math.min(
+                        100,
+                        state.affection.a + delta.a,
+                    );
+                if (delta.b)
+                    state.affection.b = Math.min(
+                        100,
+                        state.affection.b + delta.b,
+                    );
+                updateHUD();
+            }
+
+            /*
+            function updateHUD() {
+                document.getElementById("bar-a").style.width =
+                    state.affection.a + "%";
+                document.getElementById("val-a").textContent =
+                    state.affection.a;
+                document.getElementById("bar-b").style.width =
+                    state.affection.b + "%";
+                document.getElementById("val-b").textContent =
+                    state.affection.b;
+            }
+            */
+
+            function updateInventoryUI() {
+                const list = document.getElementById("inv-list");
+                const empty = document.getElementById("inv-empty");
+                if (state.inventory.length === 0) {
+                    list.innerHTML = '<span id="inv-empty">없음</span>';
+                    return;
+                }
+                list.innerHTML = "";
+                state.inventory.forEach((id) => {
+                    const scenesWithItem = Object.values(story).find(
+                        (s) => s.item?.id === id,
+                    );
+                    const item = scenesWithItem?.item ?? {
+                        icon: "•",
+                        name: id,
+                    };
+                    const div = document.createElement("div");
+                    div.className = "inv-item";
+                    div.textContent = `${item.icon} ${item.name}`;
+                    list.appendChild(div);
+                });
+            }
+
+            function toggleInv() {
+                const p = document.getElementById("inv-panel");
+                p.style.display =
+                    p.style.display === "block" ? "none" : "block";
+            }
+
+            function showToast(msg) {
+                const t = document.getElementById("toast");
+                t.textContent = msg;
+                t.classList.add("show");
+                setTimeout(() => t.classList.remove("show"), 2500);
+            }
+
+            // 인벤토리 외부 클릭 닫기
+            document.addEventListener("click", (e) => {
+                const panel = document.getElementById("inv-panel");
+                const btn = document.getElementById("inv-btn");
+                if (!panel.contains(e.target) && e.target !== btn) {
+                    panel.style.display = "none";
+                }
+            });
+
+            // ── 시작 ──
+            showScene("start");
+        </script>
+    </body>
+</html>

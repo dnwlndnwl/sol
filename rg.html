@@ -120,7 +120,7 @@
                 judgeTimer = setTimeout(() => (judgeEl.innerText = ""), 500);
             }
 
-            //미스판정
+            //노트 드롭
             function spawnNote(laneIndex) {
                 const lane = lanes[laneIndex];
 
@@ -131,11 +131,11 @@
 
                 let y = 0;
                 const gameHeight = document.getElementById("game").offsetHeight;
-
+                //드롭 속도
                 const fall = setInterval(() => {
                     y += 20;
                     note.style.top = y + "px";
-
+                    //키씹
                     if (y > gameHeight) {
                         clearInterval(fall);
                         if (note.dataset.hit === "false") {
@@ -186,12 +186,12 @@
 
                 if (diff < 20) {
                     result = "Perfect";
-                    color = "cyan";
+                    color = "violet";
                     score += 300;
                     combo++;
                 } else if (diff < 50) {
-                    result = "Good";
-                    color = "lime";
+                    result = "Greats";
+                    color = "cyan";
                     score += 100;
                     combo++;
                 } else {

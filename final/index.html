@@ -1,0 +1,599 @@
+<!doctype html>
+<html lang="ko">
+    <head>
+        <meta charset="UTF-8" />
+        <title>Resonance: 니나와 시유</title>
+        <!-- [CSS] maid.html과 game.html의 스타일을 모두 합쳤습니다 -->
+        <style>
+            @import url("https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;600&family=Noto+Sans+KR:wght@300;400&display=swap");
+
+            :root {
+                --bg: #0a0a0f;
+                --panel: rgba(10, 10, 20, 0.85);
+                --border: rgba(255, 255, 255, 0.08);
+                --accent-a: #f97316; /* 니나 - 주황 */
+                --accent-b: #94a3b8; /* 시유 - 블루그레이 */
+                --text: #f0eee8;
+                --muted: #888;
+            }
+
+            body,
+            html {
+                margin: 0;
+                padding: 0;
+                background: var(--bg);
+                color: var(--text);
+                font-family: "Noto Sans KR", sans-serif;
+                height: 100vh;
+                overflow: hidden;
+            }
+
+            /* ── [VN] 레이아웃 (maid.html 기반) ── */
+            #game-vn {
+                position: relative;
+                width: 100vw;
+                height: 100vh;
+            }
+            #background {
+                position: absolute;
+                inset: 0;
+                background: #000;
+                transition: background 1s ease;
+            }
+            #characters {
+                position: absolute;
+                bottom: 220px;
+                left: 0;
+                right: 0;
+                display: flex;
+                justify-content: center;
+                gap: 80px;
+                pointer-events: none;
+            }
+            .character-img {
+                height: 55vh;
+                object-fit: contain;
+                transition:
+                    opacity 0.4s,
+                    filter 0.4s;
+                filter: brightness(0.7);
+                display: none;
+            }
+            .character-img.active {
+                filter: brightness(1);
+            }
+
+            /* HUD & UI */
+            #hud {
+                position: absolute;
+                top: 16px;
+                right: 20px;
+                display: flex;
+                gap: 12px;
+                z-index: 10;
+            }
+            .stat-box {
+                background: var(--panel);
+                border: 1px solid var(--border);
+                border-radius: 8px;
+                padding: 6px 12px;
+                min-width: 90px;
+            }
+            .stat-label {
+                font-size: 10px;
+                color: var(--muted);
+            }
+            .stat-bar-wrap {
+                height: 4px;
+                background: rgba(255, 255, 255, 0.1);
+                border-radius: 2px;
+                overflow: hidden;
+            }
+            .stat-bar {
+                height: 100%;
+                transition: width 0.6s ease;
+            }
+            .stat-bar.a {
+                background: var(--accent-a);
+            }
+            .stat-bar.b {
+                background: var(--accent-b);
+            }
+
+            /* 대사창 */
+            #dialogue {
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                background: var(--panel);
+                border-top: 1px solid var(--border);
+                padding: 24px 32px;
+                backdrop-filter: blur(12px);
+                z-index: 100;
+            }
+            #speaker {
+                font-family: "Noto Serif KR", serif;
+                font-size: 14px;
+                font-weight: 600;
+                margin-bottom: 10px;
+            }
+            #speaker.char-a {
+                color: var(--accent-a);
+            }
+            #speaker.char-b {
+                color: var(--accent-b);
+            }
+            #text {
+                font-size: 16px;
+                line-height: 1.8;
+                min-height: 52px;
+                margin-bottom: 16px;
+            }
+            .choice {
+                display: block;
+                width: 100%;
+                background: rgba(255, 255, 255, 0.04);
+                border: 1px solid var(--border);
+                color: white;
+                padding: 10px;
+                margin-bottom: 8px;
+                cursor: pointer;
+                text-align: left;
+            }
+            #next-btn {
+                display: none;
+                background: none;
+                border: none;
+                color: var(--muted);
+                cursor: pointer;
+            }
+
+            /* ── [RG] 레이아웃 (game.html 기반) ── */
+            #rhythmGame {
+                position: absolute;
+                inset: 0;
+                background: #0a0a15;
+                display: none;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                z-index: 200;
+            }
+            #game-board {
+                display: flex;
+                width: 400px;
+                height: 600px;
+                background: #0d0d14;
+                border: 1px solid #1e1e2e;
+                position: relative;
+                overflow: hidden;
+            }
+            .lane {
+                flex: 1;
+                border-right: 1px solid #1a1a2a;
+                position: relative;
+            }
+            .lane.active {
+                background: rgba(255, 255, 255, 0.04);
+            }
+            .note {
+                position: absolute;
+                width: 82%;
+                height: 18px;
+                left: 9%;
+                background: linear-gradient(180deg, #7b6ff0, #4f46e5);
+                border-radius: 3px;
+                box-shadow: 0 0 10px rgba(100, 80, 255, 0.6);
+            }
+            #hitline {
+                position: absolute;
+                bottom: 80px;
+                width: 100%;
+                height: 3px;
+                background: rgba(255, 255, 255, 0.3);
+            }
+            #judge {
+                position: absolute;
+                top: 38%;
+                width: 100%;
+                text-align: center;
+                font-size: 26px;
+                font-weight: bold;
+                pointer-events: none;
+            }
+            #rg-ui {
+                display: flex;
+                gap: 40px;
+                margin-bottom: 15px;
+                color: #fff;
+            }
+            #keys {
+                display: flex;
+                width: 400px;
+                gap: 4px;
+                margin-top: 10px;
+            }
+            .key {
+                flex: 1;
+                height: 40px;
+                background: #111120;
+                border: 1px solid #2a2a3a;
+                color: #444;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            .key.active {
+                background: #2a2850;
+                color: #9b8fff;
+            }
+
+            /* 결과 화면 */
+            #resultScreen {
+                display: none;
+                position: absolute;
+                inset: 0;
+                background: rgba(10, 10, 15, 0.97);
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                color: white;
+                z-index: 300;
+            }
+            #countdown {
+                display: none;
+                position: absolute;
+                inset: 0;
+                background: rgba(0, 0, 0, 0.5);
+                align-items: center;
+                justify-content: center;
+                font-size: 80px;
+                z-index: 250;
+            }
+        </style>
+    </head>
+    <body>
+        <!-- [VN 레이어] -->
+        <div id="game-vn">
+            <div id="background"></div>
+            <div id="characters">
+                <img class="character-img" id="char-a" src="nina.png" />
+                <img class="character-img" id="char-b" src="siyu.png" />
+            </div>
+            <div id="hud">
+                <div class="stat-box">
+                    <span class="stat-label">니나 호감도</span>
+                    <div class="stat-bar-wrap">
+                        <div
+                            class="stat-bar a"
+                            id="bar-a"
+                            style="width: 0%"
+                        ></div>
+                    </div>
+                    <div id="val-a">0</div>
+                </div>
+                <div class="stat-box">
+                    <span class="stat-label">시유 호감도</span>
+                    <div class="stat-bar-wrap">
+                        <div
+                            class="stat-bar b"
+                            id="bar-b"
+                            style="width: 0%"
+                        ></div>
+                    </div>
+                    <div id="val-b">0</div>
+                </div>
+            </div>
+            <div id="dialogue">
+                <div id="speaker"></div>
+                <div id="text"></div>
+                <div id="choices"></div>
+                <button id="next-btn" onclick="nextScene()">▶ 계속</button>
+            </div>
+        </div>
+
+        <!-- [RG 레이어] -->
+        <div id="rhythmGame">
+            <div id="rg-ui">
+                <div>
+                    <span>SCORE</span>
+                    <div id="scoreVal">0</div>
+                </div>
+                <div>
+                    <span>COMBO</span>
+                    <div id="comboVal">0</div>
+                </div>
+            </div>
+            <div id="game-board">
+                <div class="lane" id="lane0"></div>
+                <div class="lane" id="lane1"></div>
+                <div class="lane" id="lane2"></div>
+                <div class="lane" id="lane3"></div>
+                <div id="hitline"></div>
+                <div id="judge"></div>
+                <div id="countdown"></div>
+                <div id="resultScreen">
+                    <h2>연주 결과</h2>
+                    <div id="resultScore" style="font-size: 40px">0</div>
+                    <div
+                        id="resultStats"
+                        style="margin: 20px 0; text-align: center; color: #888"
+                    ></div>
+                    <button
+                        onclick="finishRG()"
+                        style="padding: 10px 20px; cursor: pointer"
+                    >
+                        확인
+                    </button>
+                </div>
+            </div>
+            <div id="keys">
+                <div class="key" id="key0">D</div>
+                <div class="key" id="key1">F</div>
+                <div class="key" id="key2">J</div>
+                <div class="key" id="key3">K</div>
+            </div>
+        </div>
+
+        <audio id="audio"></audio>
+
+        <script>
+            /* =========================================
+           1. 게임 상태 (maid.html 기반)
+        ========================================= */
+            const state = {
+                affection: { a: 0, b: 0 },
+                inventory: [],
+                current: "start",
+                rhythmResult: null,
+            };
+
+            const story = {
+                start: {
+                    type: "dialogue",
+                    speaker: "나",
+                    text: "이 학교가 그 유명한 서화예고인가...",
+                    next: "meet_nina",
+                },
+                meet_nina: {
+                    type: "dialogue",
+                    speaker: "니나",
+                    speakerClass: "char-a",
+                    text: "야, 전학생! 너 피아노 좀 친다며? 실력 좀 볼까?",
+                    next: "rhythm_tuto",
+                },
+                rhythm_tuto: {
+                    type: "rhythm",
+                    audioSrc: "music.mp3",
+                    chart: [
+                        { time: 1000, lane: 0 },
+                        { time: 2000, lane: 1 },
+                        { time: 3000, lane: 2 },
+                    ], // 테스트용
+                    next: "after_rhythm",
+                },
+                after_rhythm: {
+                    type: "dialogue",
+                    speaker: "니나",
+                    text: "헤에... 생각보다 제법이잖아?",
+                    next: null,
+                },
+            };
+
+            /* =========================================
+           2. VN 로직 (maid.html 기반)
+        ========================================= */
+            function showScene(name) {
+                state.current = name;
+                const scene = story[name];
+                if (!scene) return;
+
+                if (scene.type === "rhythm") {
+                    startRGMode(scene);
+                    return;
+                }
+
+                document.getElementById("game-vn").style.display = "block";
+                document.getElementById("rhythmGame").style.display = "none";
+
+                setSpeaker(scene.speaker, scene.speakerClass);
+                document.getElementById("text").innerText = scene.text;
+
+                const nb = document.getElementById("next-btn");
+                nb.style.display = scene.next ? "block" : "none";
+                nb._next = scene.next;
+
+                // 캐릭터 이미지 업데이트 (예시)
+                if (scene.speakerClass === "char-a") {
+                    document.getElementById("char-a").style.display = "block";
+                    document.getElementById("char-a").classList.add("active");
+                }
+            }
+
+            function setSpeaker(name, cls) {
+                const el = document.getElementById("speaker");
+                el.innerText = name || "";
+                el.className = cls || "";
+            }
+
+            function nextScene() {
+                const nb = document.getElementById("next-btn");
+                if (nb._next) showScene(nb._next);
+            }
+
+            /* =========================================
+           3. RG 로직 (game.html 기반 이식)
+        ========================================= */
+            let gameRunning = false;
+            let notes = [];
+            let score = 0;
+            let combo = 0;
+            let judgeCounts = { Perfect: 0, Good: 0, Miss: 0 };
+            const audio = document.getElementById("audio");
+            let rafId;
+
+            function startRGMode(scene) {
+                document.getElementById("game-vn").style.display = "none";
+                document.getElementById("rhythmGame").style.display = "flex";
+
+                // 초기화
+                score = 0;
+                combo = 0;
+                notes = [];
+                judgeCounts = { Perfect: 0, Good: 0, Miss: 0 };
+                document.getElementById("resultScreen").style.display = "none";
+
+                // 오디오 설정
+                audio.src = scene.audioSrc;
+                audio.load();
+
+                // 채보 데이터를 로컬 변수에 복사
+                const currentChart = JSON.parse(JSON.stringify(scene.chart));
+
+                // 카운트다운 후 시작
+                let count = 3;
+                const cdEl = document.getElementById("countdown");
+                cdEl.style.display = "flex";
+                cdEl.innerText = count;
+
+                const cdInterval = setInterval(() => {
+                    count--;
+                    if (count <= 0) {
+                        clearInterval(cdInterval);
+                        cdEl.style.display = "none";
+                        gameRunning = true;
+                        audio.play();
+                        rafId = requestAnimationFrame(() =>
+                            gameLoop(currentChart),
+                        );
+                    } else {
+                        cdEl.innerText = count;
+                    }
+                }, 1000);
+            }
+
+            function gameLoop(chart) {
+                if (!gameRunning) return;
+                const currentTime = audio.currentTime * 1000;
+
+                // 노트 생성
+                const speed = 0.3; // FALL_SPEED
+                const hitlineY = 600 - 80;
+
+                while (
+                    chart.length > 0 &&
+                    currentTime + hitlineY / speed > chart[0].time
+                ) {
+                    const nd = chart.shift();
+                    spawnNote(nd.lane, nd.time);
+                }
+
+                // 노트 이동
+                for (let i = notes.length - 1; i >= 0; i--) {
+                    const note = notes[i];
+                    const elapsed =
+                        currentTime - (note.time - hitlineY / speed);
+                    const y = elapsed * speed;
+                    note.el.style.top = y + "px";
+
+                    if (y > hitlineY + 100) {
+                        // MISS
+                        note.el.remove();
+                        notes.splice(i, 1);
+                        combo = 0;
+                        judgeCounts.Miss++;
+                        showJudge("MISS", "#666");
+                    }
+                }
+                updateRGUI();
+                rafId = requestAnimationFrame(() => gameLoop(chart));
+
+                if (audio.ended) endGame();
+            }
+
+            function spawnNote(laneIdx, time) {
+                const el = document.createElement("div");
+                el.className = "note";
+                document.getElementById("lane" + laneIdx).appendChild(el);
+                notes.push({ el, laneIdx, time });
+            }
+
+            function showJudge(txt, col) {
+                const j = document.getElementById("judge");
+                j.innerText = txt;
+                j.style.color = col;
+                setTimeout(() => (j.innerText = ""), 400);
+            }
+
+            function updateRGUI() {
+                document.getElementById("scoreVal").innerText = score;
+                document.getElementById("comboVal").innerText = combo;
+            }
+
+            function endGame() {
+                gameRunning = false;
+                cancelAnimationFrame(rafId);
+                document.getElementById("resultScreen").style.display = "flex";
+                document.getElementById("resultScore").innerText = score;
+                document.getElementById("resultStats").innerText =
+                    `Perfect: ${judgeCounts.Perfect} / Good: ${judgeCounts.Good} / Miss: ${judgeCounts.Miss}`;
+            }
+
+            function finishRG() {
+                const scene = story[state.current];
+                showScene(scene.next);
+            }
+
+            // 키 입력 (game.html 기반)
+            document.addEventListener("keydown", (e) => {
+                if (!gameRunning) return;
+                const keyMap = { d: 0, f: 1, j: 2, k: 3 };
+                const laneIdx = keyMap[e.key.toLowerCase()];
+                if (laneIdx === undefined) return;
+
+                document
+                    .getElementById("key" + laneIdx)
+                    .classList.add("active");
+
+                const hitlineY = 600 - 80;
+                const target = notes.find(
+                    (n) =>
+                        n.laneIdx === laneIdx &&
+                        Math.abs(parseFloat(n.el.style.top) - hitlineY) < 100,
+                );
+
+                if (target) {
+                    const diff = Math.abs(
+                        parseFloat(target.el.style.top) - hitlineY,
+                    );
+                    if (diff < 30) {
+                        score += 300;
+                        combo++;
+                        judgeCounts.Perfect++;
+                        showJudge("PERFECT", "gold");
+                    } else {
+                        score += 100;
+                        combo++;
+                        judgeCounts.Good++;
+                        showJudge("GOOD", "lime");
+                    }
+                    target.el.remove();
+                    notes = notes.filter((n) => n !== target);
+                }
+            });
+
+            document.addEventListener("keyup", (e) => {
+                const keyMap = { d: 0, f: 1, j: 2, k: 3 };
+                const idx = keyMap[e.key.toLowerCase()];
+                if (idx !== undefined)
+                    document
+                        .getElementById("key" + idx)
+                        .classList.remove("active");
+            });
+
+            // 시작
+            showScene("start");
+        </script>
+    </body>
+</html>

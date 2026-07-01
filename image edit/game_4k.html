@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="ko">
+    <head>
+        <meta charset="UTF-8" />
+        <title>4K 리듬게임 통합 테스트기</title>
+        <style>
+            body {
+                background: #0a0a0f;
+                color: white;
+                font-family: monospace;
+                margin: 0;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                height: 100vh;
+                overflow: hidden;
+            }
+            /* 설정 영역 */
+            #setup {
+                background: #111120;
+                padding: 20px;
+                border-bottom: 2px solid #333;
+                width: 100%;
+                display: flex;
+                gap: 20px;
+                justify-content: center;
+                z-index: 100;
+            }
+            .input-group {
+                display: flex;
+                flex-direction: column;
+                gap: 5px;
+            }
+            input {
+                background: #050508;
+                border: 1px solid #444;
+                color: white;
+                padding: 5px;
+            }
+            button {
+                background: #4f46e5;
+                border: none;
+                color: white;
+                padding: 10px 20px;
+                cursor: pointer;
+                font-weight: bold;
+            }
+            button:hover {
+                background: #6366f1;
+            }
+
+            /* 게임 영역 */
+            #game-view {
+                position: relative;
+                width: 400px;
+                height: 100%;
+                background: #050508;
+                border-left: 2px solid #1e1e2e;
+                border-right: 2px solid #1e1e2e;
+            }
+            canvas {
+                display: block;
+            }
+
+            #hud {
+                position: absolute;
+                top: 20%;
+                width: 100%;
+                text-align: center;
+                pointer-events: none;
+            }
+            #combo {
+                font-size: 50px;
+                font-weight: bold;
+                text-shadow: 0 0 10px #7b6ff0;
+            }
+            #judge {
+                font-size: 20px;
+                margin-top: 10px;
+                font-weight: bold;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="setup">
+            <div class="input-group">
+                <label>1. 곡 파일 (MP3/WAV)</label>
+                <input type="file" id="audio-file" accept="audio/*" />
+            </div>
+            <div class="input-group">
+                <label>2. 채보 파일 (JSON)</label>
+                <input type="file" id="json-file" accept=".json" />
+            </div>
+            <div class="input-group">
+                <label>속도 (1.0~8.0)</label>
+                <input type="number" id="speed-input" value="4.0" step="0.5" />
+            </div>
+            <button id="start-btn">GAME START</button>
+        </div>
+
+        <div id="game-view">
+            <canvas id="canvas"></canvas>
+            <div id="hud">
+                <div id="combo">0</div>
+                <div id="judge">READY</div>
+            </div>
+        </div>
+
+        <script>
+            const canvas = document.getElementById("canvas");
+            const ctx = canvas.getContext("2d");
+            const audio = new Audio();
+
+            // 게임 환경 변수
+            let chart = [];
+            let isPlaying = false;
+            let startTime = 0;
+            let laneKeys = ["d", "f", "j", "k"];
+            let laneStates = [false, false, false, false];
+            let combo = 0;
+            let judgeText = "";
+            let judgeColor = "white";
+
+            // 사이즈 설정
+            canvas.width = 400;
+            canvas.height = window.innerHeight;
+
+            // 파일 로드 및 시작
+            document.getElementById("start-btn").onclick = () => {
+                const audioFile =
+                    document.getElementById("audio-file").files[0];
+                const jsonFile = document.getElementById("json-file").files[0];
+
+                if (!audioFile || !jsonFile)
+                    return alert("곡과 JSON 파일을 모두 넣어주세요!");
+
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    chart = JSON.parse(e.target.result);
+                    audio.src = URL.createObjectURL(audioFile);
+                    audio.play();
+                    startTime = performance.now();
+                    isPlaying = true;
+                    requestAnimationFrame(update);
+                };
+                reader.readAsText(jsonFile);
+            };
+
+            window.onkeydown = (e) => {
+                const idx = laneKeys.indexOf(e.key.toLowerCase());
+                if (idx !== -1 && !laneStates[idx]) {
+                    laneStates[idx] = true;
+                    checkHit(idx);
+                }
+            };
+            window.onkeyup = (e) => {
+                const idx = laneKeys.indexOf(e.key.toLowerCase());
+                if (idx !== -1) laneStates[idx] = false;
+            };
+
+            function checkHit(lane) {
+                const curTime = audio.currentTime * 1000;
+                // 가장 가까운 처리 안 된 노트 찾기
+                const note = chart.find(
+                    (n) =>
+                        n.lane === lane &&
+                        !n.processed &&
+                        Math.abs(n.time - curTime) < 200,
+                );
+
+                if (note) {
+                    const diff = Math.abs(note.time - curTime);
+                    note.processed = true;
+                    if (diff < 50) setJudge("PERFECT", "#ffcc00");
+                    else if (diff < 100) setJudge("GREAT", "#00ffcc");
+                    else setJudge("GOOD", "#00ff66");
+                    combo++;
+                }
+            }
+
+            function setJudge(txt, col) {
+                judgeText = txt;
+                judgeColor = col;
+                document.getElementById("combo").textContent = combo;
+                document.getElementById("judge").textContent = txt;
+                document.getElementById("judge").style.color = col;
+            }
+
+            function update() {
+                if (!isPlaying) return;
+                const curTime = audio.currentTime * 1000;
+                const scrollSpeed = parseFloat(
+                    document.getElementById("speed-input").value,
+                );
+                const hitLineY = canvas.height - 100;
+
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                // 레인 배경
+                for (let i = 0; i < 4; i++) {
+                    ctx.fillStyle = laneStates[i]
+                        ? "rgba(255,255,255,0.1)"
+                        : "rgba(255,255,255,0.02)";
+                    ctx.fillRect(i * 100, 0, 100, canvas.height);
+                }
+
+                // 판정선
+                ctx.fillStyle = "#ff4757";
+                ctx.fillRect(0, hitLineY, canvas.width, 3);
+
+                // 노트 렌더링
+                chart.forEach((n) => {
+                    if (n.processed && n.type === "short") return;
+
+                    // Y좌표 계산: 판정선 - (노트시간 - 현재시간) * 속도
+                    const y = hitLineY - (n.time - curTime) * scrollSpeed;
+
+                    if (y > -100 && y < canvas.height + 500) {
+                        ctx.fillStyle =
+                            n.lane === 0 || n.lane === 3 ? "#fff" : "#9b8fff";
+
+                        if (n.type === "short") {
+                            ctx.fillRect(n.lane * 100 + 5, y - 10, 90, 20);
+                        } else {
+                            const h = n.duration * scrollSpeed;
+                            // 롱노트 몸통
+                            ctx.globalAlpha = 0.4;
+                            ctx.fillRect(n.lane * 100 + 20, y - h, 60, h);
+                            ctx.globalAlpha = 1.0;
+                            // 머리와 꼬리
+                            ctx.fillRect(n.lane * 100 + 5, y - 10, 90, 20);
+                            ctx.fillRect(n.lane * 100 + 5, y - h - 5, 90, 10);
+                        }
+                    }
+
+                    // 미스 판정
+                    if (!n.processed && y > hitLineY + 100) {
+                        n.processed = true;
+                        combo = 0;
+                        setJudge("MISS", "#ff4757");
+                    }
+                });
+
+                requestAnimationFrame(update);
+            }
+        </script>
+    </body>
+</html>

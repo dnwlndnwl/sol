@@ -1,0 +1,522 @@
+<!doctype html>
+<html lang="ko">
+    <head>
+        <meta charset="UTF-8" />
+        <title>지랄발광 에디터 6K - EXTREME MASTER</title>
+        <style>
+            * {
+                box-sizing: border-box;
+                margin: 0;
+                padding: 0;
+            }
+            body {
+                background: #0a0a0f;
+                color: white;
+                font-family: "Courier New", monospace;
+                display: flex;
+                height: 100vh;
+                overflow: hidden;
+            }
+
+            #controls {
+                width: 300px;
+                min-width: 300px;
+                background: #0d0d14;
+                border-right: 1px solid #1e1e2e;
+                padding: 20px;
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+                overflow-y: auto;
+            }
+            h2 {
+                font-size: 13px;
+                letter-spacing: 2px;
+                opacity: 0.5;
+                border-bottom: 1px solid #1e1e2e;
+                padding-bottom: 5px;
+            }
+            .section {
+                display: flex;
+                flex-direction: column;
+                gap: 4px;
+            }
+            label {
+                font-size: 10px;
+                opacity: 0.4;
+                letter-spacing: 1px;
+            }
+            input,
+            select {
+                background: #111120;
+                border: 1px solid #2a2a3a;
+                color: white;
+                padding: 8px;
+                font-family: inherit;
+                font-size: 13px;
+                border-radius: 4px;
+            }
+            .btn {
+                padding: 8px;
+                background: transparent;
+                border: 1px solid #4f46e5;
+                color: #9b8fff;
+                font-size: 11px;
+                cursor: pointer;
+                border-radius: 4px;
+                text-align: center;
+            }
+            .btn:hover {
+                background: rgba(79, 70, 229, 0.2);
+            }
+            .btn.success {
+                border-color: #38a169;
+                color: #68d391;
+            }
+
+            #editor {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                background: #050508;
+                position: relative;
+                padding-top: 10px;
+            }
+            #time-display {
+                font-size: 36px;
+                font-weight: bold;
+                color: #7b6ff0;
+                margin-bottom: 5px;
+                font-variant-numeric: tabular-nums;
+            }
+
+            /* 6키용 넓은 레인 (80px * 6 = 480px) */
+            #lane-viewport {
+                position: relative;
+                width: 480px;
+                height: 82vh;
+                background: #000;
+                border-left: 2px solid #1e1e2e;
+                border-right: 2px solid #1e1e2e;
+                overflow: hidden;
+            }
+            canvas {
+                position: absolute;
+                top: 0;
+                left: 0;
+            }
+
+            #hit-line {
+                position: absolute;
+                bottom: 100px;
+                width: 100%;
+                height: 4px;
+                background: #ff4757;
+                box-shadow: 0 0 15px #ff4757;
+                z-index: 10;
+            }
+
+            #toast {
+                position: absolute;
+                top: 20px;
+                right: 20px;
+                background: rgba(79, 70, 229, 0.9);
+                padding: 8px 15px;
+                border-radius: 4px;
+                font-size: 12px;
+                opacity: 0;
+                transition: 0.2s;
+                z-index: 100;
+                pointer-events: none;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="controls">
+            <h2>FILES</h2>
+            <div class="section">
+                <label>Music</label
+                ><input type="file" id="audioFile" accept="audio/*" />
+            </div>
+            <div class="section">
+                <label>Chart Image</label
+                ><input type="file" id="imgFile" accept="image/*" />
+            </div>
+
+            <h2>SYNC (118 BPM / 732px)</h2>
+            <div class="section">
+                <label>BPM</label
+                ><input type="number" id="bpmInput" value="118" />
+            </div>
+            <div class="section">
+                <label>Precision PPS</label
+                ><input
+                    type="number"
+                    id="ppsInput"
+                    value="359.900"
+                    step="0.001"
+                />
+            </div>
+            <div class="section">
+                <label>Image Y Offset</label
+                ><input type="number" id="imgOffset" value="0" />
+            </div>
+
+            <h2>6K EDITOR (1-9 Keys)</h2>
+            <div class="section">
+                <label>Snap</label>
+                <select id="snapSelect">
+                    <option value="4">1/4</option>
+                    <option value="8">1/8</option>
+                    <option value="12">1/12</option>
+                    <option value="16">1/16</option>
+                    <option value="24">1/24</option>
+                    <option value="32">1/32</option>
+                    <option value="48">1/48</option>
+                    <option value="96">1/96</option>
+                    <option value="192" selected>1/192 (MASTER)</option>
+                </select>
+            </div>
+            <div class="section">
+                <label>Speed</label>
+                <select id="playbackRate">
+                    <option value="0.25">0.25x</option>
+                    <option value="0.5">0.5x</option>
+                    <option value="1.0" selected>1.0x</option>
+                </select>
+            </div>
+
+            <div class="section" style="margin-top: 10px">
+                <button class="btn success" onclick="exportChart()">
+                    SAVE 6K JSON
+                </button>
+                <button
+                    class="btn"
+                    onclick="document.getElementById('importFile').click()"
+                >
+                    LOAD JSON
+                </button>
+                <input
+                    type="file"
+                    id="importFile"
+                    accept=".json"
+                    style="display: none"
+                />
+            </div>
+            <div
+                style="
+                    font-size: 10px;
+                    opacity: 0.3;
+                    line-height: 1.4;
+                    margin-top: 5px;
+                "
+            >
+                <b>[S D F J K L]</b> : 6K Input<br />
+                [1-9] : Snap Change<br />
+                [UP/DOWN] : Nudge Last Note<br />
+                [SPACE] : Play/Pause | [Z] : Undo
+            </div>
+        </div>
+
+        <div id="editor">
+            <div id="time-display">00:00.000</div>
+            <div id="lane-viewport">
+                <canvas id="imgCanvas"></canvas>
+                <canvas id="noteCanvas"></canvas>
+                <div id="hit-line"></div>
+            </div>
+            <div style="font-size: 11px; opacity: 0.4; margin-top: 10px">
+                NOTES: <span id="countVal">0</span> | MODE: 6 KEYS (SDF JKL)
+            </div>
+        </div>
+
+        <div id="toast"></div>
+        <audio id="audio"></audio>
+
+        <script>
+            const audio = document.getElementById("audio");
+            const iCanvas = document.getElementById("imgCanvas");
+            const iCtx = iCanvas.getContext("2d");
+            const nCanvas = document.getElementById("noteCanvas");
+            const nCtx = nCanvas.getContext("2d");
+            const viewport = document.getElementById("lane-viewport");
+
+            let chart = [];
+            let overlayImg = new Image();
+            let isImgLoaded = false;
+            let activeHolds = [null, null, null, null, null, null]; // 6개 레인
+            const keyMap = { s: 0, d: 1, f: 2, j: 3, k: 4, l: 5 }; // 6K 매핑
+            const snapMap = {
+                1: 4,
+                2: 8,
+                3: 12,
+                4: 16,
+                5: 24,
+                6: 32,
+                7: 48,
+                8: 96,
+                9: 192,
+            };
+
+            iCanvas.width = nCanvas.width = viewport.clientWidth;
+            iCanvas.height = nCanvas.height = viewport.clientHeight;
+
+            document.getElementById("audioFile").onchange = (e) => {
+                audio.src = URL.createObjectURL(e.target.files[0]);
+            };
+            document.getElementById("imgFile").onchange = (e) => {
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    overlayImg.src = ev.target.result;
+                };
+                overlayImg.onload = () => {
+                    isImgLoaded = true;
+                    showToast("6K Image Ready");
+                };
+                reader.readAsDataURL(e.target.files[0]);
+            };
+            document.getElementById("importFile").onchange = (e) => {
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    chart = JSON.parse(ev.target.result);
+                    showToast("Chart Loaded");
+                };
+                reader.readAsText(e.target.files[0]);
+            };
+            document.getElementById("playbackRate").onchange = (e) => {
+                audio.playbackRate = parseFloat(e.target.value);
+            };
+
+            function loop() {
+                const cur = audio.currentTime;
+                const m = Math.floor(cur / 60)
+                    .toString()
+                    .padStart(2, "0");
+                const s = Math.floor(cur % 60)
+                    .toString()
+                    .padStart(2, "0");
+                const ms = Math.floor((cur % 1) * 1000)
+                    .toString()
+                    .padStart(3, "0");
+                document.getElementById("time-display").textContent =
+                    `${m}:${s}.${ms}`;
+                document.getElementById("countVal").textContent = chart.length;
+                draw();
+                requestAnimationFrame(loop);
+            }
+
+            function draw() {
+                const cur = audio.currentTime;
+                const bpm =
+                    parseFloat(document.getElementById("bpmInput").value) ||
+                    118;
+                const offset = parseFloat(
+                    document.getElementById("imgOffset").value,
+                );
+                const hitY = viewport.clientHeight - 100;
+                const laneW = nCanvas.width / 6; // 6분할
+
+                // PPS 계산 (이미지 비율 보정)
+                const viewScale = iCanvas.width / (overlayImg.width || 480);
+                const pps = (732 * viewScale) / ((60 / bpm) * 4);
+
+                iCtx.clearRect(0, 0, iCanvas.width, iCanvas.height);
+                nCtx.clearRect(0, 0, nCanvas.width, nCanvas.height);
+
+                // 1. 그리드 (1/192 대응)
+                const snap = parseInt(
+                    document.getElementById("snapSelect").value,
+                );
+                const beatMs = 60000 / bpm;
+                const unitMs = (beatMs * 4) / snap;
+                const startMs = cur * 1000 - 1000;
+                const endMs = cur * 1000 + 3000;
+                let gt = Math.floor(startMs / unitMs) * unitMs;
+                while (gt < endMs) {
+                    const gy = hitY + (cur * 1000 - gt) * (pps / 1000);
+                    const isMeasure = Math.abs(gt % (beatMs * 4)) < 2;
+                    nCtx.strokeStyle = isMeasure
+                        ? "rgba(255,255,255,0.4)"
+                        : "rgba(123,111,240,0.1)";
+                    nCtx.lineWidth = isMeasure ? 2 : 0.5;
+                    nCtx.beginPath();
+                    nCtx.moveTo(0, gy);
+                    nCtx.lineTo(nCanvas.width, gy);
+                    nCtx.stroke();
+                    gt += unitMs;
+                }
+
+                // 2. 이미지 낙하
+                if (isImgLoaded) {
+                    const drawH = overlayImg.height * viewScale;
+                    const scrollY = hitY - drawH + cur * pps + offset;
+                    iCtx.globalAlpha = 0.5;
+                    iCtx.drawImage(
+                        overlayImg,
+                        0,
+                        scrollY,
+                        iCanvas.width,
+                        drawH,
+                    );
+                    iCtx.globalAlpha = 1.0;
+                }
+
+                // 3. 노트 렌더링
+                chart.forEach((n, idx) => {
+                    const y = hitY + (cur - n.time / 1000) * pps;
+                    const h = n.type === "long" ? (n.duration / 1000) * pps : 0;
+                    if (y < -2000 || y - h > nCanvas.height + 1000) return;
+                    const x = n.lane * laneW;
+
+                    if (idx === chart.length - 1) {
+                        // 마지막 노트 강조
+                        nCtx.strokeStyle = "#ff4757";
+                        nCtx.lineWidth = 3;
+                        nCtx.strokeRect(x + 2, y - 8, laneW - 4, 16);
+                    }
+
+                    // 6키 전용 색상 배치
+                    if (n.lane === 0 || n.lane === 5)
+                        nCtx.fillStyle = "#fff"; // 사이드 흰색
+                    else if (n.lane === 1 || n.lane === 4)
+                        nCtx.fillStyle = "#9b8fff"; // 중간 파랑
+                    else nCtx.fillStyle = "#60a5fa"; // 센터 하늘
+
+                    if (n.type === "long") {
+                        nCtx.globalAlpha = 0.4;
+                        nCtx.fillRect(x + 15, y - h, laneW - 30, h);
+                        nCtx.globalAlpha = 1.0;
+                        nCtx.fillStyle = "#fff";
+                        nCtx.fillRect(x + 5, y - h - 4, laneW - 10, 8);
+                    }
+                    nCtx.fillRect(x + 5, y - 4, laneW - 10, 8);
+                });
+
+                // 4. 실시간 입력 피드백
+                activeHolds.forEach((startTime, lane) => {
+                    if (startTime !== null) {
+                        const x = lane * laneW;
+                        const y = hitY + (cur - startTime / 1000) * pps;
+                        const h = (cur * 1000 - startTime) * (pps / 1000);
+                        nCtx.fillStyle = "rgba(123, 111, 240, 0.4)";
+                        nCtx.fillRect(x + 15, y - h, laneW - 30, h);
+                        nCtx.fillStyle = "rgba(255, 255, 255, 0.8)";
+                        nCtx.fillRect(x + 5, y - 4, laneW - 10, 8);
+                    }
+                });
+            }
+
+            document.addEventListener("keydown", (e) => {
+                const blocked = [
+                    " ",
+                    "ArrowUp",
+                    "ArrowDown",
+                    "ArrowLeft",
+                    "ArrowRight",
+                ];
+                if (blocked.includes(e.key)) e.preventDefault();
+                if (e.repeat) return;
+                const key = e.key.toLowerCase();
+
+                if (snapMap[key]) {
+                    document.getElementById("snapSelect").value = snapMap[key];
+                    showToast(`Snap: 1/${snapMap[key]}`);
+                    return;
+                }
+                if (key === " ") {
+                    audio.paused ? audio.play() : audio.pause();
+                    return;
+                }
+                if (key === "z") {
+                    chart.pop();
+                    return;
+                }
+                if (e.key === "ArrowRight") {
+                    audio.currentTime += 5;
+                    return;
+                }
+                if (e.key === "ArrowLeft") {
+                    audio.currentTime -= 5;
+                    return;
+                }
+
+                if (
+                    chart.length > 0 &&
+                    (e.key === "ArrowUp" || e.key === "ArrowDown")
+                ) {
+                    const last = chart[chart.length - 1];
+                    const snap = parseInt(
+                        document.getElementById("snapSelect").value,
+                    );
+                    const unitMs =
+                        ((60000 /
+                            (parseFloat(
+                                document.getElementById("bpmInput").value,
+                            ) || 118)) *
+                            4) /
+                        snap;
+                    last.time += e.key === "ArrowUp" ? unitMs : -unitMs;
+                    if (last.time < 0) last.time = 0;
+                    chart.sort((a, b) => a.time - b.time);
+                    return;
+                }
+
+                const lane = keyMap[key];
+                if (lane !== undefined)
+                    activeHolds[lane] = audio.currentTime * 1000;
+            });
+
+            document.addEventListener("keyup", (e) => {
+                const lane = keyMap[e.key.toLowerCase()];
+                if (lane !== undefined && activeHolds[lane] !== null) {
+                    const start = activeHolds[lane];
+                    const end = audio.currentTime * 1000;
+                    activeHolds[lane] = null;
+                    const snap = parseInt(
+                        document.getElementById("snapSelect").value,
+                    );
+                    const unitMs =
+                        ((60000 /
+                            (parseFloat(
+                                document.getElementById("bpmInput").value,
+                            ) || 118)) *
+                            4) /
+                        snap;
+                    const sStart = Math.round(start / unitMs) * unitMs;
+                    const sEnd = Math.round(end / unitMs) * unitMs;
+                    const dur = sEnd - sStart;
+                    const type = dur > 130 ? "long" : "short";
+                    chart.push({
+                        time: sStart,
+                        lane: lane,
+                        type: type,
+                        duration: type === "long" ? dur : 0,
+                    });
+                    chart.sort((a, b) => a.time - b.time);
+                }
+            });
+
+            function exportChart() {
+                const blob = new Blob([JSON.stringify(chart, null, 2)], {
+                    type: "application/json",
+                });
+                const a = document.createElement("a");
+                a.href = URL.createObjectURL(blob);
+                a.download = "flos_6k_master.json";
+                a.click();
+            }
+            function showToast(msg) {
+                const t = document.getElementById("toast");
+                t.textContent = msg;
+                t.style.opacity = 1;
+                setTimeout(() => (t.style.opacity = 0), 1000);
+            }
+            function clearAll() {
+                if (confirm("초기화?")) chart = [];
+            }
+
+            loop();
+        </script>
+    </body>
+</html>

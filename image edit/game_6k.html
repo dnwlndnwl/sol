@@ -1,0 +1,379 @@
+<!doctype html>
+<html lang="ko">
+    <head>
+        <meta charset="UTF-8" />
+        <title>6K 리듬게임 실전 테스터 - 최종 통합본</title>
+        <style>
+            /* ── 스타일 설정 ── */
+            body {
+                background: #050508;
+                color: white;
+                font-family: "Courier New", monospace;
+                margin: 0;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                height: 100vh;
+                overflow: hidden;
+            }
+
+            /* 상단 설정바 */
+            #setup {
+                background: #0d0d14;
+                padding: 15px 30px;
+                border-bottom: 1px solid #1e1e2e;
+                width: 100%;
+                display: flex;
+                gap: 20px;
+                justify-content: center;
+                align-items: center;
+                z-index: 100;
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            }
+            .input-group {
+                display: flex;
+                flex-direction: column;
+                gap: 3px;
+            }
+            label {
+                font-size: 10px;
+                color: #4f46e5;
+                font-weight: bold;
+                letter-spacing: 1px;
+            }
+            input {
+                background: #111120;
+                border: 1px solid #2a2a3a;
+                color: white;
+                padding: 6px;
+                font-size: 12px;
+                border-radius: 4px;
+            }
+            button {
+                background: #4f46e5;
+                border: none;
+                color: white;
+                padding: 10px 25px;
+                cursor: pointer;
+                font-weight: bold;
+                border-radius: 4px;
+                transition: 0.2s;
+                box-shadow: 0 0 10px rgba(79, 70, 229, 0.4);
+            }
+            button:hover {
+                background: #6366f1;
+                transform: translateY(-2px);
+            }
+
+            /* 게임 화면 (6키 최적화 540px) */
+            #game-container {
+                position: relative;
+                width: 540px;
+                height: 100%;
+                background: #000;
+                border-left: 2px solid #1e1e2e;
+                border-right: 2px solid #1e1e2e;
+            }
+            canvas {
+                display: block;
+            }
+
+            /* UI 레이어 */
+            #hud {
+                position: absolute;
+                top: 25%;
+                width: 100%;
+                text-align: center;
+                pointer-events: none;
+            }
+            #combo {
+                font-size: 70px;
+                font-weight: bold;
+                font-family: sans-serif;
+                color: #fff;
+                text-shadow: 0 0 20px rgba(123, 111, 240, 0.8);
+                letter-spacing: -2px;
+                margin: 0;
+                transition: 0.05s;
+            }
+            #judge {
+                font-size: 26px;
+                margin-top: 5px;
+                font-weight: bold;
+                letter-spacing: 3px;
+                text-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+            }
+
+            .guide-text {
+                position: absolute;
+                bottom: 20px;
+                width: 100%;
+                text-align: center;
+                font-size: 12px;
+                opacity: 0.2;
+                letter-spacing: 2px;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="setup">
+            <div class="input-group">
+                <label>1. MUSIC FILE</label>
+                <input type="file" id="audio-file" accept="audio/*" />
+            </div>
+            <div class="input-group">
+                <label>2. 6K JSON CHART</label>
+                <input type="file" id="json-file" accept=".json" />
+            </div>
+            <div class="input-group">
+                <label>SCROLL SPEED</label>
+                <input type="number" id="speed-input" value="4.5" step="0.5" />
+            </div>
+            <button id="start-btn">PLAY START</button>
+        </div>
+
+        <div id="game-container">
+            <canvas id="canvas"></canvas>
+            <div id="hud">
+                <p id="combo">0</p>
+                <div id="judge">READY</div>
+            </div>
+            <div class="guide-text">[S D F] [J K L] TO PLAY</div>
+        </div>
+
+        <audio id="audio-player"></audio>
+
+        <script>
+            // ════════════════════════════════════════════
+            //  설정 및 상태 관리
+            // ════════════════════════════════════════════
+            const canvas = document.getElementById("canvas");
+            const ctx = canvas.getContext("2d");
+            const audio = document.getElementById("audio-player");
+
+            let chart = [];
+            let isPlaying = false;
+            const laneKeys = ["s", "d", "f", "j", "k", "l"];
+            let laneStates = [false, false, false, false, false, false];
+            let combo = 0;
+
+            // 6K 전용 색상 배치
+            const laneColors = [
+                "#ffffff", // S (사이드 흰색)
+                "#9b8fff", // D (보라)
+                "#60a5fa", // F (하늘)
+                "#60a5fa", // J (하늘)
+                "#9b8fff", // K (보라)
+                "#ffffff", // L (사이드 흰색)
+            ];
+
+            canvas.width = 540;
+            canvas.height = window.innerHeight;
+
+            // ════════════════════════════════════════════
+            //  파일 로드 및 시작
+            // ════════════════════════════════════════════
+            document.getElementById("start-btn").onclick = () => {
+                const audioFile =
+                    document.getElementById("audio-file").files[0];
+                const jsonFile = document.getElementById("json-file").files[0];
+
+                if (!audioFile || !jsonFile)
+                    return alert("곡과 JSON 파일을 모두 선택해주세요! 크하하!");
+
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    // 데이터를 가져오면서 판정용 상태(processed, holding) 초기화
+                    chart = JSON.parse(e.target.result).map((n) => ({
+                        ...n,
+                        processed: false,
+                        holding: false,
+                    }));
+                    audio.src = URL.createObjectURL(audioFile);
+                    audio.play();
+                    isPlaying = true;
+                    requestAnimationFrame(update);
+                    document.getElementById("setup").style.opacity = "0.3"; // 작업 방해 금지
+                };
+                reader.readAsText(jsonFile);
+            };
+
+            // ════════════════════════════════════════════
+            //  입력 및 판정 시스템 (개선판)
+            // ════════════════════════════════════════════
+            window.onkeydown = (e) => {
+                const idx = laneKeys.indexOf(e.key.toLowerCase());
+                if (idx !== -1 && !laneStates[idx]) {
+                    laneStates[idx] = true;
+                    processHit(idx);
+                }
+            };
+
+            window.onkeyup = (e) => {
+                const idx = laneKeys.indexOf(e.key.toLowerCase());
+                if (idx !== -1) {
+                    laneStates[idx] = false;
+                    processRelease(idx);
+                }
+            };
+
+            function processHit(lane) {
+                const curTime = audio.currentTime * 1000;
+                // 판정 범위 ±180ms 내에서 가장 빠른 미처리 노트 찾기
+                const note = chart.find(
+                    (n) =>
+                        n.lane === lane &&
+                        !n.processed &&
+                        !n.holding &&
+                        Math.abs(n.time - curTime) < 180,
+                );
+
+                if (note) {
+                    const diff = Math.abs(note.time - curTime);
+                    if (note.type === "short") {
+                        note.processed = true;
+                        applyJudgment(diff);
+                    } else {
+                        // 롱노트 시작점 판정
+                        note.holding = true;
+                        applyJudgment(diff);
+                    }
+                }
+            }
+
+            function processRelease(lane) {
+                // 현재 해당 레인에서 누르고 있던 롱노트가 있는지 확인
+                const note = chart.find((n) => n.lane === lane && n.holding);
+
+                if (note) {
+                    const curTime = audio.currentTime * 1000;
+                    const endTime = note.time + note.duration;
+                    const diff = Math.abs(endTime - curTime);
+
+                    note.holding = false;
+                    note.processed = true;
+
+                    // 끝점 판정 (200ms 이내면 성공)
+                    if (diff < 200) {
+                        setJudge("LONG OK", "#9b8fff");
+                        combo++;
+                    } else {
+                        // 너무 일찍 뗌
+                        setJudge("MISS (TOO EARLY)", "#ff4757");
+                        combo = 0;
+                    }
+                }
+            }
+
+            function applyJudgment(diff) {
+                if (diff < 45) {
+                    setJudge("PERFECT", "#ffcc00");
+                    combo++;
+                } else if (diff < 90) {
+                    setJudge("GREAT", "#00ffcc");
+                    combo++;
+                } else if (diff < 150) {
+                    setJudge("GOOD", "#00ff66");
+                    combo++;
+                } else {
+                    setJudge("BAD", "#ff4757");
+                    combo = 0;
+                }
+            }
+
+            function setJudge(txt, col) {
+                document.getElementById("combo").textContent = combo;
+                const j = document.getElementById("judge");
+                j.textContent = txt;
+                j.style.color = col;
+                // 애니메이션 리셋
+                j.style.animation = "none";
+                j.offsetHeight;
+                j.style.animation = null;
+            }
+
+            // ════════════════════════════════════════════
+            //  메인 루프 및 렌더링
+            // ════════════════════════════════════════════
+            function update() {
+                if (!isPlaying) return;
+                const curTime = audio.currentTime * 1000;
+                const scrollSpeed = parseFloat(
+                    document.getElementById("speed-input").value,
+                );
+                const hitLineY = canvas.height - 120;
+                const laneW = canvas.width / 6;
+
+                // --- 실시간 상태 감시 (롱노트 탈주 및 미스 체크) ---
+                chart.forEach((n) => {
+                    // 1. 롱노트 도중 손을 뗀 경우 (즉시 미스)
+                    if (n.type === "long" && n.holding && !laneStates[n.lane]) {
+                        n.holding = false;
+                        n.processed = true;
+                        combo = 0;
+                        setJudge("MISS (BREAK)", "#ff4757");
+                    }
+                    // 2. 아예 안 누르고 지나간 경우
+                    const deadLine =
+                        n.type === "short"
+                            ? n.time + 150
+                            : n.time + n.duration + 150;
+                    if (!n.processed && !n.holding && curTime > deadLine) {
+                        n.processed = true;
+                        combo = 0;
+                        setJudge("MISS", "#ff4757");
+                    }
+                });
+
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                // 레인 가이드 선 및 배경
+                for (let i = 0; i < 6; i++) {
+                    ctx.fillStyle = laneStates[i]
+                        ? "rgba(123, 111, 240, 0.2)"
+                        : "rgba(255,255,255,0.03)";
+                    ctx.fillRect(i * laneW, 0, laneW, canvas.height);
+                    ctx.strokeStyle = "rgba(255,255,255,0.05)";
+                    ctx.strokeRect(i * laneW, 0, laneW, canvas.height);
+                }
+
+                // 판정선
+                ctx.fillStyle = "#ff4757";
+                ctx.fillRect(0, hitLineY, canvas.width, 4);
+
+                // 노트 렌더링
+                chart.forEach((n) => {
+                    // 처리 완료된 단노트는 안 그림 (단, 잡고 있는 롱노트는 끝까지 그림)
+                    if (n.processed && !n.holding) return;
+
+                    const y = hitLineY + (curTime - n.time) * scrollSpeed;
+                    if (y < -200 || y > canvas.height + 600) return;
+
+                    const x = n.lane * laneW;
+                    ctx.fillStyle = laneColors[n.lane];
+
+                    if (n.type === "short") {
+                        ctx.fillRect(x + 5, y - 8, laneW - 10, 16);
+                    } else {
+                        const h = n.duration * scrollSpeed;
+                        // 롱노트 몸통
+                        ctx.globalAlpha = n.holding ? 0.9 : 0.4;
+                        ctx.fillRect(x + 15, y - h, laneW - 30, h);
+                        ctx.globalAlpha = 1.0;
+
+                        // 시작점 머리
+                        ctx.fillRect(x + 5, y - 8, laneW - 10, 16);
+
+                        // 끝점 꼬리 (아직 안 끝났을 때만)
+                        if (!n.processed) {
+                            ctx.fillStyle = "#fff";
+                            ctx.fillRect(x + 5, y - h - 8, laneW - 10, 8);
+                        }
+                    }
+                });
+
+                requestAnimationFrame(update);
+            }
+        </script>
+    </body>
+</html>

@@ -1,0 +1,125 @@
+[
+  {
+    "id": 0,
+    "bg": "morning_street.jpg",
+    "active": "none",
+    "text": "오늘부터 전학 갈 학교로 향하는 길. 낯선 풍경들 사이로 벚꽃 잎이 흩날리고 있었다."
+  },
+  {
+    "id": 1,
+    "bg": "morning_street.jpg",
+    "seeu": "seeu_base.png",
+    "active": "seeu",
+    "text": "그때였다. 저 멀리 앞서 걷는 한 소녀의 뒷모습에 시선을 빼앗긴 것은."
+  },
+  {
+    "id": 2,
+    "active": "seeu",
+    "text": "바람에 부드럽게 찰랑이는 검은 머리카락, 그리고 등에 멘 커다란 악기 가방. 순간적으로 스쳐 지나간 옆모습이... 진짜 말도 안 되게 예뻤다."
+  },
+  {
+    "id": 3,
+    "active": "none",
+    "text": "(...와, 저런 애가 우리 학교에 있다고? 세상은 참 불공평하네.)"
+  },
+  {
+    "id": 4,
+    "bg": "classroom.jpg",
+    "active": "none",
+    "text": "잠시 후, 담임 선생님의 안내를 받아 들어선 교실. 어색한 공기 속에서 내 시선은 자연스럽게 창가 쪽 뒷자리를 향했다."
+  },
+  {
+    "id": 5,
+    "seeu": "seeu_base.png",
+    "active": "seeu",
+    "text": "......! 아까 그 애다. 등굣길에 본 그 소녀가 무심한 표정으로 턱을 괸 채 창밖을 보고 있었다."
+  },
+  {
+    "id": 6,
+    "active": "none",
+    "text": "교탁에서 대충 자기소개를 끝내고, 나는 자석에 이끌리듯 그녀의 옆자리로 다가갔다."
+  },
+  {
+    "id": 7,
+    "active": "none",
+    "text": "안녕, 아까 아침에 널 본 것 같은데... 혹시 이름이 뭐야?"
+  },
+  {
+    "id": 8,
+    "seeu": "seeu_cold.png",
+    "active": "seeu",
+    "text": "......?"
+  },
+  {
+    "id": 9,
+    "nina": "nina_smug.png",
+    "active": "nina",
+    "text": "어머, 전학생. 짐도 풀기 전에 작업부터 거는 거야? 우리 시유가 좀 '존예'긴 하지만, 급이 너무 안 맞는 거 아냐?"
+  },
+  {
+    "id": 10,
+    "speaker": "니나",
+    "active": "nina",
+    "text": "난 니나. 시유의 절친이자 전속 매니저랄까. 시유한테 말 걸고 싶으면 일단 나를 거쳐야 하거든?"
+  },
+  {
+    "id": 11,
+    "nina": "nina_angry.png",
+    "speaker": "니나",
+    "active": "nina",
+    "text": "마침 오늘 방과 후 연습에 반주자가 펑크를 냈어. 네 실력이 '전학생 버프'인지 아닌지, 합주실에서 증명해봐. 못 하면 시유 근처에 오지도 마!"
+  },
+  {
+    "id": 12,
+    "bg": "music_room.jpg",
+    "seeu": "seeu_base.png",
+    "nina": "nina_smug.png",
+    "active": "none",
+    "text": "방과 후, 반강제로 끌려온 음악실. 먼지 쌓인 피아노 앞에 앉자 시유가 첼로를 고쳐 잡으며 나를 빤히 쳐다보았다."
+  },
+  {
+    "id": 13,
+    "seeu": "seeu_crazy.png",
+    "active": "seeu",
+    "text": "......주의하세요. 연주가 시작되면, 제 첼로는 당신의 박자를 무참히 짓밟아버릴지도 모르니까요."
+  },
+  {
+    "id": 14,
+    "nina": "nina_smug.png",
+    "speaker": "니나",
+    "active": "nina",
+    "text": "자, 시작한다! 전학생, 네 손가락이 버티나 시유의 현이 터지나 한번 보자고!"
+  },
+  {
+    "id": 15,
+    "type": "rhythm_start",
+    "chart": "chart.json",
+    "music": "flos.mp3"
+  },
+  {
+    "id": 16,
+    "nina": "nina_blush.png",
+    "speaker": "니나",
+    "active": "nina",
+    "text": "하아... 하아... 말도 안 돼. 시유의 그 미친 폭주를... 단 한 마디도 안 놓치고 다 받아냈다고?"
+  },
+  {
+    "id": 17,
+    "seeu": "seeu_smile.png",
+    "speaker": "시유",
+    "active": "seeu",
+    "text": "후후... 피아노 소리가 첼로의 심장을 찔렀네요. 당신, 꽤 '위험한' 사람이군요."
+  },
+  {
+    "id": 18,
+    "seeu": "seeu_blush.png",
+    "speaker": "시유",
+    "active": "seeu",
+    "text": "전학생... 이름이 뭐예요? 내일도... 이 시간에 와 줄 거죠? 약속이에요."
+  },
+  {
+    "id": 19,
+    "active": "none",
+    "text": "(그녀의 미소에, 내 심장이 다시 요동치기 시작했다. 전학 첫날, 말도 안 되는 일이 벌어졌다.)"
+  }
+]

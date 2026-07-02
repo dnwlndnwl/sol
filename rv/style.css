@@ -1,0 +1,166 @@
+@import url("https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;600&family=Noto+Sans+KR:wght@300;400&display=swap");
+
+:root {
+    --bg: #0a0a0f;
+    --panel: rgba(10, 10, 20, 0.85);
+    --border: rgba(255, 255, 255, 0.08);
+    --accent-a: #f97316; /* 니나 */
+    --accent-b: #94a3b8; /* 시유 */
+    --text: #f0eee8;
+    --muted: #888;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Noto Sans KR", sans-serif;
+    height: 100vh;
+    overflow: hidden;
+}
+
+/* ── 게임 전체 ── */
+#game {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+}
+#background {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(160deg, #0d0d1a 0%, #1a0d1a 50%, #0d1a1a 100%);
+    transition: filter 1s;
+    z-index: 0;
+}
+
+/* ── 캐릭터 ── */
+#characters {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: center;
+    gap: 80px;
+    pointer-events: none;
+    z-index: 1;
+    transition: 0.5s;
+}
+.character-img {
+    height: 85vh;
+    object-fit: contain;
+    opacity: 0;
+    transition: 0.4s;
+    transform: translateY(30px);
+    filter: brightness(0.6);
+}
+.character-img.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+.character-img.active {
+    filter: brightness(1.1);
+    transform: scale(1.02);
+}
+
+/* ── 상단 HUD (호감도) ── */
+#hud {
+    position: absolute;
+    top: 16px;
+    right: 20px;
+    display: flex;
+    gap: 12px;
+    z-index: 10;
+}
+.stat-box {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-size: 12px;
+    min-width: 100px;
+}
+.stat-bar-wrap {
+    height: 4px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 2px;
+    overflow: hidden;
+    margin: 4px 0;
+}
+.stat-bar {
+    height: 100%;
+    transition: width 0.6s;
+}
+.stat-bar.a {
+    background: var(--accent-a);
+}
+.stat-bar.b {
+    background: var(--accent-b);
+}
+
+/* ── 인벤토리 ── */
+#inv-btn {
+    position: absolute;
+    top: 16px;
+    left: 20px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 14px;
+    color: var(--text);
+    z-index: 10;
+    cursor: pointer;
+}
+
+/* ── 대사 창 ── */
+#dialogue {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--panel);
+    border-top: 1px solid var(--border);
+    padding: 30px 60px;
+    backdrop-filter: blur(12px);
+    z-index: 10;
+    cursor: pointer;
+}
+#speaker {
+    font-family: "Noto Serif KR", serif;
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+#text {
+    font-size: 19px;
+    line-height: 1.8;
+    min-height: 3.6em;
+}
+
+/* ── 리듬 게임 레이어 ── */
+#rhythm-layer {
+    position: absolute;
+    inset: 0;
+    z-index: 20;
+    display: none;
+    background: rgba(0, 0, 0, 0.8);
+    align-items: center;
+    justify-content: center;
+}
+#rhythm-canvas {
+    background: #000;
+    border-left: 2px solid #333;
+    border-right: 2px solid #333;
+}
+#hud-6k {
+    position: absolute;
+    top: 15%;
+    width: 100%;
+    text-align: center;
+    pointer-events: none;
+    color: white;
+}
